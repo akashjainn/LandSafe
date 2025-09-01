@@ -205,17 +205,22 @@ export async function POST(request: NextRequest) {
 
     // Attempt to fetch and persist latest status so UI has times immediately
     try {
-      const statusData = await flightProvider.getStatus({
+      type ProviderQuery = { carrierIata: string; flightNumber: string; serviceDateISO: string; originIata?: string; destIata?: string };
+      const providerQuery: ProviderQuery = {
         carrierIata,
         flightNumber,
         serviceDateISO: parsedDate.toISOString().split("T")[0],
-      });
+        ...(originIata ? { originIata } : {}),
+        ...(destIata ? { destIata } : {}),
+      };
+  // The provider accepts FlightQuery; we pass an extended shape which it reads optionally.
+  const statusData = await flightProvider.getStatus(providerQuery as unknown as { carrierIata: string; flightNumber: string; serviceDateISO: string });
 
       if (statusData) {
         const snapshot = await prisma.flightStatusSnapshot.create({
           data: {
             flightId: flight.id,
-            provider: "AeroDataBox",
+            provider: "OpenSky",
             schedDep: statusData.schedDep ? new Date(statusData.schedDep) : null,
             schedArr: statusData.schedArr ? new Date(statusData.schedArr) : null,
             estDep: statusData.estDep ? new Date(statusData.estDep) : null,

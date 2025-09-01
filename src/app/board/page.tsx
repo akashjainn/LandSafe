@@ -16,7 +16,6 @@ import {
   Search,
   Filter,
   Trash2,
-  Clock,
   ArrowRight
 } from "lucide-react";
 import { useFlights, useRefreshAllFlights, useDeleteFlight } from "@/hooks/useFlights";
@@ -285,7 +284,7 @@ export default function BoardPage() {
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-3 text-xl font-semibold text-slate-800">
                       <div className="w-2 h-8 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
-                      {format(new Date(dateKey), 'EEEE, MMMM d, yyyy')}
+                      {formatInTimeZone(new Date(dateKey), 'UTC', 'EEEE, MMMM d, yyyy')}
                     </CardTitle>
                     <Badge variant="secondary" className="bg-slate-100 text-slate-600">
                       {flightsByDate[dateKey].length} flight{flightsByDate[dateKey].length !== 1 ? 's' : ''}

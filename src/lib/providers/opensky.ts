@@ -66,8 +66,11 @@ export class OpenSkyProvider implements FlightProvider {
         destIata?: string;
       };
 
-      const begin = Math.floor(new Date(serviceDateISO).getTime() / 1000);
-      const end = begin + 24 * 60 * 60;
+  // Widen the search window to cover flights that cross UTC midnight
+  // Start 12 hours before the service date and search for 48 hours
+  const serviceStart = Math.floor(new Date(`${serviceDateISO}T00:00:00Z`).getTime() / 1000);
+  const begin = serviceStart - 12 * 60 * 60;
+  const end = begin + 48 * 60 * 60;
 
       const icaoAirline = AIRLINE_IATA_TO_ICAO[carrierIata] || carrierIata;
       const needle1 = normalizeCallsign(`${carrierIata}${flightNumber}`);
@@ -159,13 +162,12 @@ export class OpenSkyProvider implements FlightProvider {
 
   private synthetic(query: FlightQuery): FlightStatusDTO {
     // Reuse similar logic as AeroData synthetic
-    const baseTime = new Date(query.serviceDateISO);
-    const flightNum = parseInt(query.flightNumber);
-    let status: FlightStatusCode = FlightStatusCode.SCHEDULED;
-    let delayMinutes = 0;
+  const flightNum = parseInt(query.flightNumber);
+  let status: FlightStatusCode = FlightStatusCode.SCHEDULED;
+  // keep logic lightweight; no delay minutes used in synthetic mapping
     if (Number.isFinite(flightNum)) {
       if (flightNum % 5 === 0) {
-        status = FlightStatusCode.DELAYED; delayMinutes = 30;
+        status = FlightStatusCode.DELAYED;
       } else if (flightNum % 7 === 0) {
         status = FlightStatusCode.CANCELLED;
       } else if (flightNum % 3 === 0) {
@@ -174,7 +176,7 @@ export class OpenSkyProvider implements FlightProvider {
         status = FlightStatusCode.ENROUTE;
       }
     }
-    return {
+  return {
       // Do not fabricate times; allow manual schedule to take precedence.
       schedDep: undefined,
       schedArr: undefined,
@@ -186,7 +188,7 @@ export class OpenSkyProvider implements FlightProvider {
       gateArr: undefined,
       terminalDep: undefined,
       terminalArr: undefined,
-      status: FlightStatusCode.SCHEDULED,
+  status,
       aircraftType: undefined,
       originIata: undefined,
       destIata: undefined,
