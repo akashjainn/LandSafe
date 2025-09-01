@@ -13,31 +13,71 @@ export async function POST(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const date = searchParams.get("date");
+    const year = searchParams.get("year");
+    const month = searchParams.get("month");
+    const day = searchParams.get("day");
 
-    if (!date) {
-      return NextResponse.json(
-        { error: "Date parameter is required (YYYY-MM-DD)" },
-        { status: 400 }
-      );
-    }
+    const whereClause: Record<string, unknown> = {};
 
-    // Parse date and create date range for the day
-    const serviceDate = new Date(date);
-    if (isNaN(serviceDate.getTime())) {
-      return NextResponse.json(
-        { error: "Invalid date format. Use YYYY-MM-DD" },
-        { status: 400 }
-      );
-    }
-
-    // Get all flights for the specified date
-    const flights = await prisma.flight.findMany({
-      where: {
+    // Build the where clause based on provided parameters
+    if (date) {
+      // Legacy support: specific date provided
+      const serviceDate = new Date(date);
+      if (isNaN(serviceDate.getTime())) {
+        return NextResponse.json(
+          { error: "Invalid date format. Use YYYY-MM-DD" },
+          { status: 400 }
+        );
+      }
+      Object.assign(whereClause, {
         serviceDate: {
           gte: serviceDate,
           lt: new Date(serviceDate.getTime() + 24 * 60 * 60 * 1000),
-        },
-      },
+        }
+      });
+    } else if (year || month || day) {
+      // New filter support: year/month/day filters
+      const currentYear = new Date().getFullYear();
+      const filterYear = year ? parseInt(year) : currentYear;
+      const filterMonth = month ? parseInt(month) - 1 : 0; // JS months are 0-based
+      const filterDay = day ? parseInt(day) : 1;
+
+      if (year && month && day) {
+        // Specific day
+        const serviceDate = new Date(filterYear, filterMonth, filterDay);
+        Object.assign(whereClause, {
+          serviceDate: {
+            gte: serviceDate,
+            lt: new Date(serviceDate.getTime() + 24 * 60 * 60 * 1000),
+          }
+        });
+      } else if (year && month) {
+        // Specific month
+        const startDate = new Date(filterYear, filterMonth, 1);
+        const endDate = new Date(filterYear, filterMonth + 1, 1);
+        Object.assign(whereClause, {
+          serviceDate: {
+            gte: startDate,
+            lt: endDate,
+          }
+        });
+      } else if (year) {
+        // Specific year
+        const startDate = new Date(filterYear, 0, 1);
+        const endDate = new Date(filterYear + 1, 0, 1);
+        Object.assign(whereClause, {
+          serviceDate: {
+            gte: startDate,
+            lt: endDate,
+          }
+        });
+      }
+    }
+    // If no filters provided, refresh ALL flights
+
+    // Get flights based on filters (or all flights if no filters)
+    const flights = await prisma.flight.findMany({
+      where: whereClause,
     });
 
     if (flights.length === 0) {
