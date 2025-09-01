@@ -4,8 +4,22 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Flight, ApiResponse, BulkRefreshResult } from "@/lib/types";
 
 // API functions
-async function fetchFlights(date: string): Promise<Flight[]> {
-  const response = await fetch(`/api/flights?date=${date}`);
+async function fetchFlights(filters?: {
+  date?: string;
+  year?: string;
+  month?: string;
+  day?: string;
+}): Promise<Flight[]> {
+  const params = new URLSearchParams();
+  if (filters?.date) params.append('date', filters.date);
+  if (filters?.year) params.append('year', filters.year);
+  if (filters?.month) params.append('month', filters.month);
+  if (filters?.day) params.append('day', filters.day);
+  
+  const queryString = params.toString();
+  const url = queryString ? `/api/flights?${queryString}` : '/api/flights';
+  
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error("Failed to fetch flights");
   }
@@ -26,8 +40,8 @@ async function refreshFlight(flightId: string) {
   return response.json();
 }
 
-async function refreshAllFlights(date: string): Promise<BulkRefreshResult> {
-  const response = await fetch(`/api/refresh/bulk?date=${date}`, {
+async function refreshAllFlights(url: string): Promise<BulkRefreshResult> {
+  const response = await fetch(url, {
     method: "POST",
   });
   if (!response.ok) {
@@ -69,12 +83,16 @@ async function batchCreateFlights(flights: Partial<Flight>[]) {
 }
 
 // Custom hooks
-export function useFlights(date: string) {
+export function useFlights(filters?: {
+  date?: string;
+  year?: string;
+  month?: string;
+  day?: string;
+}) {
   return useQuery({
-    queryKey: ["flights", date],
-    queryFn: () => fetchFlights(date),
+    queryKey: ["flights", filters],
+    queryFn: () => fetchFlights(filters),
     refetchInterval: 60000, // Refetch every minute
-    enabled: !!date,
   });
 }
 
@@ -94,7 +112,23 @@ export function useRefreshAllFlights() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: refreshAllFlights,
+    mutationFn: (filters?: {
+      date?: string;
+      year?: string;
+      month?: string;
+      day?: string;
+    }) => {
+      const params = new URLSearchParams();
+      if (filters?.date) params.append('date', filters.date);
+      if (filters?.year) params.append('year', filters.year);
+      if (filters?.month) params.append('month', filters.month);
+      if (filters?.day) params.append('day', filters.day);
+      
+      const queryString = params.toString();
+      const url = queryString ? `/api/refresh/bulk?${queryString}` : '/api/refresh/bulk';
+      
+      return refreshAllFlights(url);
+    },
     onSuccess: () => {
       // Invalidate and refetch flights
       queryClient.invalidateQueries({ queryKey: ["flights"] });

@@ -7,32 +7,64 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const date = searchParams.get("date");
+    const year = searchParams.get("year");
+    const month = searchParams.get("month");
+    const day = searchParams.get("day");
 
-    if (!date) {
-      return NextResponse.json(
-        { error: "Date parameter is required (YYYY-MM-DD)" },
-        { status: 400 }
-      );
+    let whereClause: any = {};
+
+    // If specific date provided, filter by that date
+    if (date) {
+      const serviceDate = new Date(date);
+      if (isNaN(serviceDate.getTime())) {
+        return NextResponse.json(
+          { error: "Invalid date format. Use YYYY-MM-DD" },
+          { status: 400 }
+        );
+      }
+      whereClause.serviceDate = {
+        gte: serviceDate,
+        lt: new Date(serviceDate.getTime() + 24 * 60 * 60 * 1000),
+      };
     }
+    // If year/month/day filters provided, build date range
+    else if (year || month || day) {
+      const currentYear = new Date().getFullYear();
+      const filterYear = year ? parseInt(year) : currentYear;
+      const filterMonth = month ? parseInt(month) - 1 : 0; // JS months are 0-based
+      const filterDay = day ? parseInt(day) : 1;
 
-    // Parse date and create date range for the day
-    const serviceDate = new Date(date);
-    if (isNaN(serviceDate.getTime())) {
-      return NextResponse.json(
-        { error: "Invalid date format. Use YYYY-MM-DD" },
-        { status: 400 }
-      );
-    }
-
-    // Get all flights for the specified date
-    const flights = await prisma.flight.findMany({
-      where: {
-        serviceDate: {
+      if (year && month && day) {
+        // Specific day
+        const serviceDate = new Date(filterYear, filterMonth, filterDay);
+        whereClause.serviceDate = {
           gte: serviceDate,
           lt: new Date(serviceDate.getTime() + 24 * 60 * 60 * 1000),
-        },
-      },
+        };
+      } else if (year && month) {
+        // Specific month
+        const startDate = new Date(filterYear, filterMonth, 1);
+        const endDate = new Date(filterYear, filterMonth + 1, 1);
+        whereClause.serviceDate = {
+          gte: startDate,
+          lt: endDate,
+        };
+      } else if (year) {
+        // Specific year
+        const startDate = new Date(filterYear, 0, 1);
+        const endDate = new Date(filterYear + 1, 0, 1);
+        whereClause.serviceDate = {
+          gte: startDate,
+          lt: endDate,
+        };
+      }
+    }
+
+    // Get flights with optional filtering
+    const flights = await prisma.flight.findMany({
+      where: whereClause,
       orderBy: [
+        { serviceDate: "desc" },
         { latestEstDep: "asc" },
         { latestSchedDep: "asc" },
         { carrierIata: "asc" },
