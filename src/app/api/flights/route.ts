@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
+import { AeroDataProvider } from "@/lib/providers/aerodata";
+import { statusFromDTO } from "@/lib/mappers";
 
 const prisma = getPrisma();
+const flightProvider = new AeroDataProvider();
 
 export async function GET(request: NextRequest) {
   try {
@@ -165,6 +168,59 @@ export async function POST(request: NextRequest) {
           createdBy,
         },
       });
+    }
+
+    // Attempt to fetch and persist latest status so UI has times immediately
+    try {
+      const statusData = await flightProvider.getStatus({
+        carrierIata,
+        flightNumber,
+        serviceDateISO: parsedDate.toISOString().split("T")[0],
+      });
+
+      if (statusData) {
+        const snapshot = await prisma.flightStatusSnapshot.create({
+          data: {
+            flightId: flight.id,
+            provider: "AeroDataBox",
+            schedDep: statusData.schedDep ? new Date(statusData.schedDep) : null,
+            schedArr: statusData.schedArr ? new Date(statusData.schedArr) : null,
+            estDep: statusData.estDep ? new Date(statusData.estDep) : null,
+            estArr: statusData.estArr ? new Date(statusData.estArr) : null,
+            actDep: statusData.actDep ? new Date(statusData.actDep) : null,
+            actArr: statusData.actArr ? new Date(statusData.actArr) : null,
+            gateDep: statusData.gateDep,
+            gateArr: statusData.gateArr,
+            terminalDep: statusData.terminalDep,
+            terminalArr: statusData.terminalArr,
+            status: statusFromDTO(statusData),
+            delayReason: statusData.delayReason,
+            aircraftType: statusData.aircraftType,
+            routeKey: statusData.originIata && statusData.destIata
+              ? `${statusData.originIata}-${statusData.destIata}`
+              : null,
+          },
+        });
+
+        // Update denormalized fields
+        flight = await prisma.flight.update({
+          where: { id: flight.id },
+          data: {
+            latestSchedDep: snapshot.schedDep,
+            latestSchedArr: snapshot.schedArr,
+            latestEstDep: snapshot.estDep,
+            latestEstArr: snapshot.estArr,
+            latestGateDep: snapshot.gateDep,
+            latestGateArr: snapshot.gateArr,
+            latestStatus: snapshot.status,
+            originIata: statusData.originIata || flight.originIata,
+            destIata: statusData.destIata || flight.destIata,
+          },
+        });
+      }
+    } catch (e) {
+      // Don't fail the request if provider refresh fails
+      console.error("Post-create refresh failed:", e);
     }
 
     return NextResponse.json({

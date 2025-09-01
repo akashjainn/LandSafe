@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
 import { parseCarrierFlightNumber } from "@/lib/types";
+import { AeroDataProvider } from "@/lib/providers/aerodata";
+import { statusFromDTO } from "@/lib/mappers";
 
 const prisma = getPrisma();
+const flightProvider = new AeroDataProvider();
 
 export async function POST(request: NextRequest) {
   try {
@@ -91,6 +94,57 @@ export async function POST(request: NextRequest) {
               notes: label || notes,
             },
           });
+        }
+
+        // Try to immediately fetch and persist status so UI shows times
+        try {
+          const statusData = await flightProvider.getStatus({
+            carrierIata,
+            flightNumber,
+            serviceDateISO: serviceDate.toISOString().split('T')[0],
+          });
+
+          if (statusData) {
+            const snapshot = await prisma.flightStatusSnapshot.create({
+              data: {
+                flightId: flight.id,
+                provider: "AeroDataBox",
+                schedDep: statusData.schedDep ? new Date(statusData.schedDep) : null,
+                schedArr: statusData.schedArr ? new Date(statusData.schedArr) : null,
+                estDep: statusData.estDep ? new Date(statusData.estDep) : null,
+                estArr: statusData.estArr ? new Date(statusData.estArr) : null,
+                actDep: statusData.actDep ? new Date(statusData.actDep) : null,
+                actArr: statusData.actArr ? new Date(statusData.actArr) : null,
+                gateDep: statusData.gateDep,
+                gateArr: statusData.gateArr,
+                terminalDep: statusData.terminalDep,
+                terminalArr: statusData.terminalArr,
+                status: statusFromDTO(statusData),
+                delayReason: statusData.delayReason,
+                aircraftType: statusData.aircraftType,
+                routeKey: statusData.originIata && statusData.destIata
+                  ? `${statusData.originIata}-${statusData.destIata}`
+                  : null,
+              },
+            });
+
+            await prisma.flight.update({
+              where: { id: flight.id },
+              data: {
+                latestSchedDep: snapshot.schedDep,
+                latestSchedArr: snapshot.schedArr,
+                latestEstDep: snapshot.estDep,
+                latestEstArr: snapshot.estArr,
+                latestGateDep: snapshot.gateDep,
+                latestGateArr: snapshot.gateArr,
+                latestStatus: snapshot.status,
+                originIata: statusData.originIata || flight.originIata,
+                destIata: statusData.destIata || flight.destIata,
+              },
+            });
+          }
+        } catch (refreshErr) {
+          console.error('Batch post-create refresh failed:', refreshErr);
         }
 
         results.push(flight);
