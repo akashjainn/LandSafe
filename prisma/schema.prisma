@@ -1,0 +1,69 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Flight {
+  id             String   @id @default(cuid())
+  carrierIata    String   // e.g., "DL"
+  flightNumber   String   // e.g., "123"
+  serviceDate    DateTime // local date at origin, stored as UTC midnight
+  originIata     String?
+  destIata       String?
+  createdAt      DateTime @default(now())
+  createdBy      String?  // optional user identifier/email
+  notes          String?  // "John's flight", "arrives with Sarah", etc.
+
+  // denormalized latest snapshot for fast list render
+  latestSchedDep DateTime?
+  latestSchedArr DateTime?
+  latestEstDep   DateTime?
+  latestEstArr   DateTime?
+  latestGateDep  String?
+  latestGateArr  String?
+  latestStatus   FlightStatusCode? @default(SCHEDULED)
+
+  statuses       FlightStatusSnapshot[]
+  @@index([serviceDate, carrierIata, flightNumber])
+}
+
+enum FlightStatusCode {
+  SCHEDULED
+  BOARDING
+  DEPARTED
+  ENROUTE
+  DIVERTED
+  CANCELLED
+  LANDED
+  DELAYED
+  UNKNOWN
+}
+
+model FlightStatusSnapshot {
+  id            String           @id @default(cuid())
+  flightId      String
+  flight        Flight           @relation(fields: [flightId], references: [id])
+  provider      String           // e.g., "AeroAPI"
+  fetchedAt     DateTime         @default(now())
+  schedDep      DateTime?
+  schedArr      DateTime?
+  estDep        DateTime?
+  estArr        DateTime?
+  actDep        DateTime?
+  actArr        DateTime?
+  gateDep       String?
+  gateArr       String?
+  terminalDep   String?
+  terminalArr   String?
+  status        FlightStatusCode @default(UNKNOWN)
+  delayReason   String?
+  aircraftType  String?
+  routeKey      String?          // origin-dest cache key
+}
