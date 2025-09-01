@@ -73,6 +73,7 @@ export default function UploadPage() {
             return {
               id: Date.now() + index,
               label: row.label || row.name || row.friend,
+              flight: row.flight,
               carrier,
               number,
               date: row.date || new Date().toISOString().split('T')[0],
@@ -133,19 +134,21 @@ export default function UploadPage() {
   const handleSubmit = async () => {
     // Validate and prepare data
     const validFlights = flightRows
-      .filter(row => row.carrier && row.number && row.date)
+      .filter(row => (row.flight && row.date) || (row.carrier && row.number && row.date))
       .map(row => ({
         label: row.label,
-        carrier: row.carrier,
-        number: row.number,
         date: row.date,
         originIata: row.origin,
         destIata: row.destination,
         notes: row.notes || row.label,
+        ...(row.flight
+          ? { flight: row.flight }
+          : { carrier: row.carrier, number: row.number }
+        ),
       }));
 
     if (validFlights.length === 0) {
-      alert("Please add at least one valid flight with carrier, number, and date.");
+      alert("Please add at least one valid flight with Flight (e.g., DL295) and Date.");
       return;
     }
 
@@ -160,9 +163,9 @@ export default function UploadPage() {
   };
 
   const downloadTemplate = () => {
-    const csvContent = "label,carrier,number,date,origin,destination,notes\n" +
-      "John's Flight,DL,123,2025-09-15,LAX,JFK,Arriving from LA\n" +
-      "Sarah's Flight,UA,456,2025-09-15,ORD,LGA,Connecting from Chicago";
+    const csvContent = "label,flight,date,notes\n" +
+      "John's Flight,DL295,2025-09-15,Arriving from LA\n" +
+      "Sarah's Flight,AA456,2025-09-15,Connecting from Chicago";
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -244,17 +247,12 @@ export default function UploadPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-4 text-sm text-gray-600">
-              <p>Expected CSV format:</p>
+              <p>Preferred CSV format (airports auto-fill):</p>
               <div className="bg-gray-50 p-3 rounded font-mono text-xs">
-                label,carrier,number,date,origin,destination,notes<br/>
-                John,DL,123,2025-09-15,LAX,JFK,From LA
+                label,flight,date,notes<br/>
+                John,DL295,2025-09-15,From LA
               </div>
-              <ul className="space-y-1 text-xs">
-                <li>• <strong>carrier:</strong> 2-letter airline code (DL, UA, AA)</li>
-                <li>• <strong>number:</strong> Flight number (123, 456)</li>
-                <li>• <strong>date:</strong> YYYY-MM-DD format</li>
-                <li>• <strong>origin/destination:</strong> 3-letter airport codes</li>
-              </ul>
+              <p className="text-xs">Also supported: legacy columns carrier,number,origin,destination.</p>
             </div>
           </CardContent>
         </Card>
@@ -282,8 +280,7 @@ export default function UploadPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Friend/Label</TableHead>
-                    <TableHead>Carrier</TableHead>
-                    <TableHead>Number</TableHead>
+                    <TableHead>Flight</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Origin</TableHead>
                     <TableHead>Destination</TableHead>
@@ -304,19 +301,10 @@ export default function UploadPage() {
                       </TableCell>
                       <TableCell>
                         <Input
-                          value={row.carrier || ""}
-                          onChange={(e) => updateRow(row.id, "carrier", e.target.value.toUpperCase())}
-                          placeholder="DL"
-                          maxLength={2}
-                          className="w-16"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          value={row.number || ""}
-                          onChange={(e) => updateRow(row.id, "number", e.target.value)}
-                          placeholder="123"
-                          className="w-20"
+                          value={row.flight || (row.carrier && row.number ? `${row.carrier}${row.number}` : "")}
+                          onChange={(e) => updateRow(row.id, "flight", e.target.value.toUpperCase())}
+                          placeholder="DL295"
+                          className="w-28"
                         />
                       </TableCell>
                       <TableCell>
@@ -382,7 +370,7 @@ export default function UploadPage() {
           disabled={batchCreateMutation.isPending || flightRows.length === 0}
           size="lg"
         >
-          {batchCreateMutation.isPending ? "Adding Flights..." : `Add ${flightRows.filter(r => r.carrier && r.number).length} Flight(s)`}
+          {batchCreateMutation.isPending ? "Adding Flights..." : `Add ${flightRows.filter(r => (r.flight && r.date) || (r.carrier && r.number && r.date)).length} Flight(s)`}
         </Button>
       </div>
     </div>

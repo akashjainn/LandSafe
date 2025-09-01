@@ -33,7 +33,8 @@ type AviFlight = {
 };
 
 export class AviationstackProvider implements FlightProvider {
-  private baseUrl = "https://api.aviationstack.com/v1";
+  // On Aviationstack Free tier, HTTPS is not supported. Use HTTP from the server.
+  private baseUrl = "http://api.aviationstack.com/v1";
   private key: string | undefined;
 
   constructor(accessKey?: string) {

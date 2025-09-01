@@ -102,28 +102,45 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
   const { carrierIata, flightNumber, serviceDate, originIata, destIata, notes, createdBy, schedDepLocal, schedArrLocal, schedDepLocalDate, schedArrLocalDate } = body as {
-    carrierIata: string; flightNumber: string; serviceDate: string; originIata?: string; destIata?: string; notes?: string; createdBy?: string;
+    carrierIata?: string; flightNumber: string; serviceDate: string; originIata?: string; destIata?: string; notes?: string; createdBy?: string;
     schedDepLocal?: string; schedArrLocal?: string; schedDepLocalDate?: string; schedArrLocalDate?: string;
   };
 
+    // If carrierIata is missing, try to parse from flightNumber input like "DL295" or "SWA300"
+    let derivedCarrier = carrierIata;
+    let derivedNumber = flightNumber;
+    if (!derivedCarrier && /^[A-Za-z]{2,3}\s*\d{1,4}$/.test((derivedNumber || '').trim())) {
+      const m = derivedNumber.trim().toUpperCase().match(/^([A-Z]{2,3})\s*(\d{1,4})$/);
+      if (m) {
+        const alias: Record<string, string> = {
+          SWA: 'WN', DAL: 'DL', UAL: 'UA', AAL: 'AA', ASA: 'AS', JBU: 'B6', NKS: 'NK', FFT: 'F9',
+          BAW: 'BA', AFR: 'AF', DLH: 'LH', UAE: 'EK', SIA: 'SQ', ACA: 'AC'
+        };
+        const prefix = m[1];
+        const mapped = alias[prefix];
+        derivedCarrier = mapped || prefix.slice(0, 2);
+        derivedNumber = m[2];
+      }
+    }
+
   // Validate required fields (carrierIata may be inferred later; require flightNumber + serviceDate)
-  if (!flightNumber || !serviceDate) {
+  if (!derivedNumber || !serviceDate) {
       return NextResponse.json(
     { error: "flightNumber and serviceDate are required" },
         { status: 400 }
       );
     }
 
-    // Validate carrier code format
-    if (!/^[A-Z]{2}$/.test(carrierIata)) {
+    // Validate carrier code format only if explicitly provided (it can be inferred)
+    if (carrierIata && !/^[A-Z]{2}$/.test(carrierIata)) {
       return NextResponse.json(
         { error: "carrierIata must be a 2-letter airline code (e.g., 'DL')" },
         { status: 400 }
       );
     }
 
-    // Validate flight number format
-    if (!/^\d{1,4}$/.test(flightNumber)) {
+  // Validate flight number format (use derivedNumber which may come from parsing combined input)
+  if (!/^\d{1,4}$/.test(derivedNumber)) {
       return NextResponse.json(
         { error: "flightNumber must be 1-4 digits" },
         { status: 400 }
@@ -146,15 +163,15 @@ export async function POST(request: NextRequest) {
     let resolvedSchedDep: Date | undefined;
     let resolvedSchedArr: Date | undefined;
     try {
-      if (!resolvedOrigin || !resolvedDest || !schedDepLocal || !schedArrLocal || !resolvedCarrier) {
+    if (!resolvedOrigin || !resolvedDest || !schedDepLocal || !schedArrLocal || !resolvedCarrier) {
         const dateStr = parsedDate.toISOString().split('T')[0];
         let sched = await flightProvider.fetchScheduleByFlight({
-          airline_iata: resolvedCarrier || "",
-          flight_number: flightNumber,
+      airline_iata: resolvedCarrier || derivedCarrier || "",
+      flight_number: derivedNumber,
           flight_date: dateStr,
         });
         if (!sched) {
-          const flight_iata = `${resolvedCarrier || ""}${flightNumber}`;
+      const flight_iata = `${resolvedCarrier || derivedCarrier || ""}${derivedNumber}`;
           sched = await flightProvider.fetchScheduleByIataFlight({ flight_iata, flight_date: dateStr });
         }
         if (sched) {
@@ -175,10 +192,10 @@ export async function POST(request: NextRequest) {
   const destFinal: string | undefined = resolvedDest || destIata || undefined;
 
     // Check if flight already exists (upsert behavior)
-    const existingFlight = await prisma.flight.findFirst({
+  const existingFlight = await prisma.flight.findFirst({
       where: {
-  carrierIata: (carrierFinal || carrierIata) as string,
-        flightNumber,
+    carrierIata: (carrierFinal || derivedCarrier || carrierIata) as string,
+    flightNumber: derivedNumber,
         serviceDate: parsedDate,
       },
     });
@@ -201,8 +218,8 @@ export async function POST(request: NextRequest) {
       // Create new flight
       flight = await prisma.flight.create({
         data: {
-          carrierIata: (carrierFinal || carrierIata || "") as string,
-          flightNumber,
+          carrierIata: (carrierFinal || derivedCarrier || carrierIata || "") as string,
+          flightNumber: derivedNumber,
           serviceDate: parsedDate,
           originIata: originFinal,
           destIata: destFinal,
@@ -252,8 +269,8 @@ export async function POST(request: NextRequest) {
     try {
       type ProviderQuery = { carrierIata: string; flightNumber: string; serviceDateISO: string; originIata?: string; destIata?: string };
       const providerQuery: ProviderQuery = {
-        carrierIata: (carrierFinal || carrierIata || "") as string,
-        flightNumber,
+        carrierIata: (carrierFinal || derivedCarrier || carrierIata || "") as string,
+        flightNumber: derivedNumber,
         serviceDateISO: parsedDate.toISOString().split("T")[0],
         ...(originFinal ? { originIata: originFinal } : {}),
         ...(destFinal ? { destIata: destFinal } : {}),
