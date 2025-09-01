@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
-import { AeroDataProvider } from "@/lib/providers/aerodata";
+import { OpenSkyProvider } from "@/lib/providers/opensky";
 import { statusFromDTO } from "@/lib/mappers";
 import { BulkRefreshResult } from "@/lib/types";
 import pLimit from "p-limit";
 
 const prisma = getPrisma();
-const flightProvider = new AeroDataProvider();
+const flightProvider = new OpenSkyProvider();
 const limit = pLimit(5); // Cap concurrency at 5 requests
 
 export async function POST(request: NextRequest) {

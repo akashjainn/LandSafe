@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
-import { AeroDataProvider } from "@/lib/providers/aerodata";
+import { OpenSkyProvider } from "@/lib/providers/opensky";
 import { statusFromDTO } from "@/lib/mappers";
 
 const prisma = getPrisma();
-const flightProvider = new AeroDataProvider();
+const flightProvider = new OpenSkyProvider();
 
 export async function POST(
   request: NextRequest,
