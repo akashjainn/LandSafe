@@ -21,9 +21,10 @@ import {
   Plane,
   MapPin,
   Search,
-  Filter
+  Filter,
+  Trash2
 } from "lucide-react";
-import { useFlights, useRefreshAllFlights } from "@/hooks/useFlights";
+import { useFlights, useRefreshAllFlights, useDeleteFlight } from "@/hooks/useFlights";
 import { getStatusColor, getStatusLabel, FlightStatusCode } from "@/lib/types";
 
 export default function BoardPage() {
@@ -41,9 +42,21 @@ export default function BoardPage() {
 
   const { data: flights = [], isLoading, error } = useFlights(Object.keys(filters).length > 0 ? filters : undefined);
   const refreshMutation = useRefreshAllFlights();
+  const deleteMutation = useDeleteFlight();
 
   const handleRefresh = () => {
     refreshMutation.mutate(Object.keys(filters).length > 0 ? filters : undefined);
+  };
+
+  const handleDeleteFlight = async (flightId: string, flightDetails: string) => {
+    if (confirm(`Are you sure you want to delete flight ${flightDetails}? This action cannot be undone.`)) {
+      try {
+        await deleteMutation.mutateAsync(flightId);
+      } catch (error) {
+        console.error('Failed to delete flight:', error);
+        alert('Failed to delete flight. Please try again.');
+      }
+    }
   };
 
   const clearFilters = () => {
@@ -270,12 +283,13 @@ export default function BoardPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Flight</TableHead>
-                        <TableHead>Friend</TableHead>
+                        <TableHead>Name</TableHead>
                         <TableHead>Route</TableHead>
                         <TableHead>Departure</TableHead>
                         <TableHead>Arrival</TableHead>
                         <TableHead>Gates</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead className="w-16">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -341,6 +355,20 @@ export default function BoardPage() {
                           </TableCell>
                           <TableCell>
                             {getStatusBadge(flight.latestStatus)}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteFlight(
+                                flight.id, 
+                                `${flight.carrierIata}${flight.flightNumber}`
+                              )}
+                              disabled={deleteMutation.isPending}
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}

@@ -1,0 +1,51 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getPrisma } from "@/lib/db";
+
+const prisma = getPrisma();
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await context.params;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Flight ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // First, delete all related flight status snapshots
+    await prisma.flightStatusSnapshot.deleteMany({
+      where: { flightId: id },
+    });
+
+    // Then delete the flight
+    const deletedFlight = await prisma.flight.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Flight deleted successfully",
+      data: deletedFlight,
+    });
+  } catch (error) {
+    console.error("Error deleting flight:", error);
+    
+    // Check if flight doesn't exist
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2025') {
+      return NextResponse.json(
+        { error: "Flight not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

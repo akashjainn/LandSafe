@@ -82,6 +82,16 @@ async function batchCreateFlights(flights: Partial<Flight>[]) {
   return response.json();
 }
 
+async function deleteFlight(flightId: string) {
+  const response = await fetch(`/api/flights/${flightId}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    throw new Error("Failed to delete flight");
+  }
+  return response.json();
+}
+
 // Custom hooks
 export function useFlights(filters?: {
   date?: string;
@@ -152,6 +162,17 @@ export function useBatchCreateFlights() {
   
   return useMutation({
     mutationFn: batchCreateFlights,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["flights"] });
+    },
+  });
+}
+
+export function useDeleteFlight() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: deleteFlight,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["flights"] });
     },
