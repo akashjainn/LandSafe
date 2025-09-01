@@ -174,22 +174,19 @@ export class OpenSkyProvider implements FlightProvider {
         status = FlightStatusCode.ENROUTE;
       }
     }
-    const schedDep = new Date(baseTime.getTime() + 14 * 60 * 60 * 1000);
-    const schedArr = new Date(baseTime.getTime() + 17 * 60 * 60 * 1000);
-    const estDep = new Date(schedDep.getTime() + delayMinutes * 60 * 1000);
-    const estArr = new Date(schedArr.getTime() + delayMinutes * 60 * 1000);
     return {
-      schedDep: schedDep.toISOString(),
-      schedArr: schedArr.toISOString(),
-      estDep: status !== FlightStatusCode.CANCELLED ? estDep.toISOString() : undefined,
-      estArr: status !== FlightStatusCode.CANCELLED ? estArr.toISOString() : undefined,
+      // Do not fabricate times; allow manual schedule to take precedence.
+      schedDep: undefined,
+      schedArr: undefined,
+      estDep: undefined,
+      estArr: undefined,
       actDep: undefined,
       actArr: undefined,
       gateDep: undefined,
       gateArr: undefined,
       terminalDep: undefined,
       terminalArr: undefined,
-      status,
+      status: FlightStatusCode.SCHEDULED,
       aircraftType: undefined,
       originIata: undefined,
       destIata: undefined,

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
+import { iataToIana } from "@/lib/airports";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -67,33 +68,7 @@ export default function BoardPage() {
     setDayFilter("");
   };
 
-  // Minimal IATA -> IANA timezone mapping for correct local-time display
-  const IATA_TZ: Record<string, string> = {
-    ATL: "America/New_York",
-    JFK: "America/New_York",
-    LGA: "America/New_York",
-    EWR: "America/New_York",
-    BOS: "America/New_York",
-    DCA: "America/New_York",
-    IAD: "America/New_York",
-    LAX: "America/Los_Angeles",
-    SFO: "America/Los_Angeles",
-    SEA: "America/Los_Angeles",
-    ORD: "America/Chicago",
-    DFW: "America/Chicago",
-    DEN: "America/Denver",
-    PHX: "America/Phoenix",
-    HND: "Asia/Tokyo",
-    NRT: "Asia/Tokyo",
-    KIX: "Asia/Tokyo",
-    SYD: "Australia/Sydney",
-    AKL: "Pacific/Auckland",
-    LHR: "Europe/London",
-    CDG: "Europe/Paris",
-    FRA: "Europe/Berlin",
-  };
-
-  const tzFor = (iata?: string | null) => (iata ? IATA_TZ[iata.toUpperCase()] : undefined);
+  const tzFor = (iata?: string | null) => iataToIana(iata);
 
   const formatDateTime = (date?: Date | string | null, tz?: string) => {
     if (!date) return "—";
