@@ -101,12 +101,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-  const { carrierIata, flightNumber, serviceDate, originIata, destIata, notes, createdBy, schedDepLocal, schedArrLocal } = body;
+  const { carrierIata, flightNumber, serviceDate, originIata, destIata, notes, createdBy, schedDepLocal, schedArrLocal, schedDepLocalDate, schedArrLocalDate } = body as {
+    carrierIata: string; flightNumber: string; serviceDate: string; originIata?: string; destIata?: string; notes?: string; createdBy?: string;
+    schedDepLocal?: string; schedArrLocal?: string; schedDepLocalDate?: string; schedArrLocalDate?: string;
+  };
 
-    // Validate required fields
-    if (!carrierIata || !flightNumber || !serviceDate) {
+  // Validate required fields (carrierIata may be inferred later; require flightNumber + serviceDate)
+  if (!flightNumber || !serviceDate) {
       return NextResponse.json(
-        { error: "carrierIata, flightNumber, and serviceDate are required" },
+    { error: "flightNumber and serviceDate are required" },
         { status: 400 }
       );
     }
@@ -136,10 +139,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // If origin/dest or carrier are missing, try to auto-resolve from Aviationstack schedule
+  let resolvedCarrier: string | undefined = carrierIata;
+  let resolvedOrigin: string | undefined = originIata || undefined;
+  let resolvedDest: string | undefined = destIata || undefined;
+    let resolvedSchedDep: Date | undefined;
+    let resolvedSchedArr: Date | undefined;
+    try {
+      if (!resolvedOrigin || !resolvedDest || !schedDepLocal || !schedArrLocal || !resolvedCarrier) {
+        const dateStr = parsedDate.toISOString().split('T')[0];
+        let sched = await flightProvider.fetchScheduleByFlight({
+          airline_iata: resolvedCarrier || "",
+          flight_number: flightNumber,
+          flight_date: dateStr,
+        });
+        if (!sched) {
+          const flight_iata = `${resolvedCarrier || ""}${flightNumber}`;
+          sched = await flightProvider.fetchScheduleByIataFlight({ flight_iata, flight_date: dateStr });
+        }
+        if (sched) {
+          resolvedCarrier = resolvedCarrier || (sched.airline?.iata || undefined);
+          resolvedOrigin = resolvedOrigin || (sched.departure?.iata || undefined);
+          resolvedDest = resolvedDest || (sched.arrival?.iata || undefined);
+          resolvedSchedDep = sched.departure?.scheduled ? new Date(sched.departure.scheduled) : undefined;
+          resolvedSchedArr = sched.arrival?.scheduled ? new Date(sched.arrival.scheduled) : undefined;
+        }
+      }
+    } catch (e) {
+      console.error('Auto-resolve schedule failed:', e);
+    }
+
+    // Use resolved values
+  const carrierFinal: string | undefined = resolvedCarrier || carrierIata || undefined;
+  const originFinal: string | undefined = resolvedOrigin || originIata || undefined;
+  const destFinal: string | undefined = resolvedDest || destIata || undefined;
+
     // Check if flight already exists (upsert behavior)
     const existingFlight = await prisma.flight.findFirst({
       where: {
-        carrierIata,
+  carrierIata: (carrierFinal || carrierIata) as string,
         flightNumber,
         serviceDate: parsedDate,
       },
@@ -151,45 +189,52 @@ export async function POST(request: NextRequest) {
       flight = await prisma.flight.update({
         where: { id: existingFlight.id },
         data: {
-          originIata,
-          destIata,
+          originIata: originFinal,
+          destIata: destFinal,
           notes,
           createdBy,
+          latestSchedDep: resolvedSchedDep ?? undefined,
+          latestSchedArr: resolvedSchedArr ?? undefined,
         },
       });
     } else {
       // Create new flight
       flight = await prisma.flight.create({
         data: {
-          carrierIata,
+          carrierIata: (carrierFinal || carrierIata || "") as string,
           flightNumber,
           serviceDate: parsedDate,
-          originIata,
-          destIata,
+          originIata: originFinal,
+          destIata: destFinal,
           notes,
           createdBy,
+          latestSchedDep: resolvedSchedDep ?? undefined,
+          latestSchedArr: resolvedSchedArr ?? undefined,
         },
       });
     }
 
     // If manual scheduled times provided (local HH:mm), convert to UTC using airport TZ offset
-    if ((schedDepLocal || schedArrLocal) && (originIata || destIata)) {
-      const dayAnchor = new Date(`${serviceDate}T00:00:00Z`);
+    if ((schedDepLocal || schedArrLocal) && (originFinal || destFinal)) {
+      const depAnchorDate = schedDepLocalDate || serviceDate;
+      const arrAnchorDate = schedArrLocalDate || serviceDate;
+      const depAnchor = new Date(`${depAnchorDate}T00:00:00Z`);
+      const arrAnchor = new Date(`${arrAnchorDate}T00:00:00Z`);
       let latestSchedDep: Date | null | undefined = undefined;
       let latestSchedArr: Date | null | undefined = undefined;
 
-      if (schedDepLocal && originIata) {
-        const tz = iataToIana(originIata);
+      if (schedDepLocal && originFinal) {
+        const tz = iataToIana(originFinal);
         if (tz) {
-          const offset = formatInTimeZone(dayAnchor, tz, 'XXX');
-          latestSchedDep = new Date(`${serviceDate}T${schedDepLocal}:00${offset}`);
+          const offset = formatInTimeZone(depAnchor, tz, 'XXX');
+          latestSchedDep = new Date(`${depAnchorDate}T${schedDepLocal}:00${offset}`);
         }
       }
-      if (schedArrLocal && destIata) {
-        const tz = iataToIana(destIata);
+      if (schedArrLocal && destFinal) {
+        const tz = iataToIana(destFinal);
         if (tz) {
-          const offset = formatInTimeZone(dayAnchor, tz, 'XXX');
-          latestSchedArr = new Date(`${serviceDate}T${schedArrLocal}:00${offset}`);
+          const offset = formatInTimeZone(arrAnchor, tz, 'XXX');
+          latestSchedArr = new Date(`${arrAnchorDate}T${schedArrLocal}:00${offset}`);
         }
       }
       if (latestSchedDep || latestSchedArr) {
@@ -207,11 +252,11 @@ export async function POST(request: NextRequest) {
     try {
       type ProviderQuery = { carrierIata: string; flightNumber: string; serviceDateISO: string; originIata?: string; destIata?: string };
       const providerQuery: ProviderQuery = {
-        carrierIata,
+        carrierIata: (carrierFinal || carrierIata || "") as string,
         flightNumber,
         serviceDateISO: parsedDate.toISOString().split("T")[0],
-        ...(originIata ? { originIata } : {}),
-        ...(destIata ? { destIata } : {}),
+        ...(originFinal ? { originIata: originFinal } : {}),
+        ...(destFinal ? { destIata: destFinal } : {}),
       };
   // The provider accepts FlightQuery; we pass an extended shape which it reads optionally.
   const statusData = await flightProvider.getStatus(providerQuery as unknown as { carrierIata: string; flightNumber: string; serviceDateISO: string });

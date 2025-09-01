@@ -14,6 +14,7 @@ export const IATA_TZ: Record<string, string> = {
   LAX: "America/Los_Angeles",
   SFO: "America/Los_Angeles",
   SEA: "America/Los_Angeles",
+  AUS: "America/Chicago",
   HND: "Asia/Tokyo",
   NRT: "Asia/Tokyo",
   KIX: "Asia/Tokyo",

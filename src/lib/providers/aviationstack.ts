@@ -88,7 +88,7 @@ export class AviationstackProvider implements FlightProvider {
     // Try 'flightsFuture' endpoint first
     try {
       return await this.fetchJson<AviFlight>(`/flightsFuture?${qs.toString()}`);
-    } catch (e) {
+    } catch (_e) {
       // Fallback to 'flight_schedules' or 'flights' with filters
     }
     // flight_schedules
@@ -96,12 +96,59 @@ export class AviationstackProvider implements FlightProvider {
       const qs2 = new URLSearchParams({ access_key: this.key, flight_date: params.date });
       if (params.type === "departure") qs2.set("dep_iata", params.iataCode); else qs2.set("arr_iata", params.iataCode);
       return await this.fetchJson<AviFlight>(`/flight_schedules?${qs2.toString()}`);
-    } catch (e) {
+  } catch (_e) {
       // Fallback to flights with scheduled status
     }
     const qs3 = new URLSearchParams({ access_key: this.key, flight_date: params.date, flight_status: "scheduled" });
     if (params.type === "departure") qs3.set("dep_iata", params.iataCode); else qs3.set("arr_iata", params.iataCode);
     return await this.fetchJson<AviFlight>(`/flights?${qs3.toString()}`);
+  }
+
+  // Fetch a single flight schedule by carrier + number + date
+  async fetchScheduleByFlight(params: { airline_iata: string; flight_number: string; flight_date: string }): Promise<AviFlight | null> {
+    if (!this.key) throw new FlightProviderError("Missing AVIATIONSTACK_ACCESS_KEY");
+    // Try flight_schedules first
+    const qs1 = new URLSearchParams({
+      access_key: this.key,
+      airline_iata: params.airline_iata,
+      flight_number: params.flight_number,
+      flight_date: params.flight_date,
+      limit: "1",
+    });
+    try {
+      const r1 = await this.fetchJson<AviFlight>(`/flight_schedules?${qs1.toString()}`);
+      if (r1[0]) return r1[0];
+    } catch {}
+    // Fallback to flights endpoint filtered by date and scheduled
+    const qs2 = new URLSearchParams({
+      access_key: this.key,
+      airline_iata: params.airline_iata,
+      flight_number: params.flight_number,
+      flight_date: params.flight_date,
+      flight_status: "scheduled",
+      limit: "1",
+    });
+    try {
+      const r2 = await this.fetchJson<AviFlight>(`/flights?${qs2.toString()}`);
+      if (r2[0]) return r2[0];
+    } catch {}
+    return null;
+  }
+
+  // Fetch a single flight schedule by combined flight IATA code (e.g., DL295)
+  async fetchScheduleByIataFlight(params: { flight_iata: string; flight_date: string }): Promise<AviFlight | null> {
+    if (!this.key) throw new FlightProviderError("Missing AVIATIONSTACK_ACCESS_KEY");
+    const qs1 = new URLSearchParams({ access_key: this.key, flight_iata: params.flight_iata, flight_date: params.flight_date, limit: "1" });
+    try {
+      const r1 = await this.fetchJson<AviFlight>(`/flight_schedules?${qs1.toString()}`);
+      if (r1[0]) return r1[0];
+    } catch {}
+    const qs2 = new URLSearchParams({ access_key: this.key, flight_iata: params.flight_iata, flight_date: params.flight_date, flight_status: "scheduled", limit: "1" });
+    try {
+      const r2 = await this.fetchJson<AviFlight>(`/flights?${qs2.toString()}`);
+      if (r2[0]) return r2[0];
+    } catch {}
+    return null;
   }
 
   private async fetchJson<T>(path: string): Promise<T[]> {

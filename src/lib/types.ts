@@ -162,7 +162,7 @@ export function getStatusColor(status: FlightStatusCode): string {
 export function getStatusLabel(status: FlightStatusCode): string {
   switch (status) {
     case "SCHEDULED":
-      return "Scheduled";
+      return "On time";
     case "BOARDING":
       return "Boarding";
     case "DEPARTED":
