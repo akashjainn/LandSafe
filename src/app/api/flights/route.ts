@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
-import { AviationstackProvider } from "@/lib/providers/aviationstack";
+import { AeroDataProvider } from "@/lib/providers/aerodata";
 import { statusFromDTO } from "@/lib/mappers";
 import { iataToIana } from "@/lib/airports";
 import { formatInTimeZone } from "date-fns-tz";
 
 const prisma = getPrisma();
-const flightProvider = new AviationstackProvider();
+const flightProvider = new AeroDataProvider();
 
 export async function GET(request: NextRequest) {
   try {
@@ -156,40 +156,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If origin/dest or carrier are missing, try to auto-resolve from Aviationstack schedule
-  let resolvedCarrier: string | undefined = carrierIata;
-  let resolvedOrigin: string | undefined = originIata || undefined;
-  let resolvedDest: string | undefined = destIata || undefined;
-    let resolvedSchedDep: Date | undefined;
-    let resolvedSchedArr: Date | undefined;
-    try {
-    if (!resolvedOrigin || !resolvedDest || !schedDepLocal || !schedArrLocal || !resolvedCarrier) {
-        const dateStr = parsedDate.toISOString().split('T')[0];
-        let sched = await flightProvider.fetchScheduleByFlight({
-      airline_iata: resolvedCarrier || derivedCarrier || "",
-      flight_number: derivedNumber,
-          flight_date: dateStr,
-        });
-        if (!sched) {
-      const flight_iata = `${resolvedCarrier || derivedCarrier || ""}${derivedNumber}`;
-          sched = await flightProvider.fetchScheduleByIataFlight({ flight_iata, flight_date: dateStr });
-        }
-        if (sched) {
-          resolvedCarrier = resolvedCarrier || (sched.airline?.iata || undefined);
-          resolvedOrigin = resolvedOrigin || (sched.departure?.iata || undefined);
-          resolvedDest = resolvedDest || (sched.arrival?.iata || undefined);
-          resolvedSchedDep = sched.departure?.scheduled ? new Date(sched.departure.scheduled) : undefined;
-          resolvedSchedArr = sched.arrival?.scheduled ? new Date(sched.arrival.scheduled) : undefined;
-        }
-      }
-    } catch (e) {
-      console.error('Auto-resolve schedule failed:', e);
-    }
-
-    // Use resolved values
-  const carrierFinal: string | undefined = resolvedCarrier || carrierIata || undefined;
-  const originFinal: string | undefined = resolvedOrigin || originIata || undefined;
-  const destFinal: string | undefined = resolvedDest || destIata || undefined;
+    // Use available values; we'll enrich from AeroDataBox after creation
+  const carrierFinal: string | undefined = carrierIata || derivedCarrier || undefined;
+  const originFinal: string | undefined = originIata || undefined;
+  const destFinal: string | undefined = destIata || undefined;
 
     // Check if flight already exists (upsert behavior)
   const existingFlight = await prisma.flight.findFirst({
@@ -210,23 +180,21 @@ export async function POST(request: NextRequest) {
           destIata: destFinal,
           notes,
           createdBy,
-          latestSchedDep: resolvedSchedDep ?? undefined,
-          latestSchedArr: resolvedSchedArr ?? undefined,
+          // Sched times will be filled from provider below if available
         },
       });
     } else {
       // Create new flight
       flight = await prisma.flight.create({
         data: {
-          carrierIata: (carrierFinal || derivedCarrier || carrierIata || "") as string,
+          carrierIata: (carrierFinal || derivedCarrier || "") as string,
           flightNumber: derivedNumber,
           serviceDate: parsedDate,
           originIata: originFinal,
           destIata: destFinal,
           notes,
           createdBy,
-          latestSchedDep: resolvedSchedDep ?? undefined,
-          latestSchedArr: resolvedSchedArr ?? undefined,
+          // Sched times will be filled from provider below if available
         },
       });
     }
@@ -282,7 +250,7 @@ export async function POST(request: NextRequest) {
         const snapshot = await prisma.flightStatusSnapshot.create({
           data: {
             flightId: flight.id,
-            provider: "Aviationstack",
+            provider: "AeroDataBox",
             schedDep: statusData.schedDep ? new Date(statusData.schedDep) : null,
             schedArr: statusData.schedArr ? new Date(statusData.schedArr) : null,
             estDep: statusData.estDep ? new Date(statusData.estDep) : null,

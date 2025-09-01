@@ -83,7 +83,7 @@ model Schedule {
   gateArr      String?
   terminalDep  String?
   terminalArr  String?
-  source       String   @default("Aviationstack")
+  source       String   @default("AeroDataBox")
   updatedAt    DateTime @updatedAt
 
   @@index([flightId])
@@ -102,7 +102,7 @@ model OpsStatus {
   actArrGate   String?
   delayDepMin  Int?
   delayArrMin  Int?
-  source       String           @default("Aviationstack")
+  source       String           @default("AeroDataBox")
   updatedAt    DateTime         @updatedAt
 
   @@index([flightId])

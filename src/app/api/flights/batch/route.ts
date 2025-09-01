@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
 import { parseCarrierFlightNumber } from "@/lib/types";
-import { AviationstackProvider } from "@/lib/providers/aviationstack";
+import { AeroDataProvider } from "@/lib/providers/aerodata";
 import { statusFromDTO } from "@/lib/mappers";
 
 const prisma = getPrisma();
-const flightProvider = new AviationstackProvider();
+const flightProvider = new AeroDataProvider();
 
 export async function POST(request: NextRequest) {
   try {
@@ -73,36 +73,14 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Auto-resolve missing carrier/origin/dest and scheduled times using Aviationstack
-        let resolvedCarrier = derivedCarrier;
-        let resolvedOrigin: string | undefined = originIata;
-        let resolvedDest: string | undefined = destIata;
-        let resolvedSchedDep: Date | undefined;
-        let resolvedSchedArr: Date | undefined;
-        try {
-          if (!resolvedOrigin || !resolvedDest || !resolvedCarrier) {
-            const dateStr = serviceDate.toISOString().split('T')[0];
-            let sched = resolvedCarrier
-              ? await flightProvider.fetchScheduleByFlight({ airline_iata: resolvedCarrier, flight_number: derivedNumber, flight_date: dateStr })
-              : null;
-            if (!sched) {
-              const flight_iata = `${resolvedCarrier || ''}${derivedNumber}`;
-              sched = await flightProvider.fetchScheduleByIataFlight({ flight_iata, flight_date: dateStr });
-            }
-            if (sched) {
-              resolvedCarrier = resolvedCarrier || (sched.airline?.iata || undefined);
-              resolvedOrigin = resolvedOrigin || (sched.departure?.iata || undefined);
-              resolvedDest = resolvedDest || (sched.arrival?.iata || undefined);
-              resolvedSchedDep = sched.departure?.scheduled ? new Date(sched.departure.scheduled) : undefined;
-              resolvedSchedArr = sched.arrival?.scheduled ? new Date(sched.arrival.scheduled) : undefined;
-            }
-          }
-        } catch (e) {
-          console.error('Batch auto-resolve schedule failed:', e);
-        }
+  // Auto-resolve scheduled/origin/dest will be handled by provider status fetch below
+  const resolvedCarrier = derivedCarrier;
+  const resolvedOrigin: string | undefined = originIata;
+  const resolvedDest: string | undefined = destIata;
+  // (Removed Aviationstack schedule pre-fetch)
 
         // We must have a carrier at this point to upsert
-        if (!resolvedCarrier) {
+  if (!resolvedCarrier) {
           errors.push(`Unable to resolve carrier for flight ${combined || `${carrier}${number}`}`);
           continue;
         }
@@ -123,8 +101,7 @@ export async function POST(request: NextRequest) {
             data: {
               originIata: resolvedOrigin,
               destIata: resolvedDest,
-              latestSchedDep: resolvedSchedDep ?? undefined,
-              latestSchedArr: resolvedSchedArr ?? undefined,
+              // Sched times will be populated from provider snapshot if returned
               notes: label || notes,
             },
           });
@@ -136,8 +113,7 @@ export async function POST(request: NextRequest) {
               serviceDate,
               originIata: resolvedOrigin,
               destIata: resolvedDest,
-              latestSchedDep: resolvedSchedDep ?? undefined,
-              latestSchedArr: resolvedSchedArr ?? undefined,
+              // Sched times will be populated from provider snapshot if returned
               notes: label || notes,
             },
           });
@@ -155,7 +131,7 @@ export async function POST(request: NextRequest) {
             const snapshot = await prisma.flightStatusSnapshot.create({
               data: {
                 flightId: flight.id,
-                provider: "Aviationstack",
+                provider: "AeroDataBox",
                 schedDep: statusData.schedDep ? new Date(statusData.schedDep) : null,
                 schedArr: statusData.schedArr ? new Date(statusData.schedArr) : null,
                 estDep: statusData.estDep ? new Date(statusData.estDep) : null,

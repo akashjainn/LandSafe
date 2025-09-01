@@ -6,7 +6,7 @@ export class AeroDataProvider implements FlightProvider {
   private baseUrl = "https://aerodatabox.p.rapidapi.com/flights";
 
   constructor(apiKey?: string) {
-    this.apiKey = apiKey || process.env.AERODATA_API_KEY || "";
+  this.apiKey = apiKey || process.env.AERODATA_API_KEY || process.env.AERODATABOX_API_KEY || "";
   }
 
   async getStatus(query: FlightQuery): Promise<FlightStatusDTO | null> {
