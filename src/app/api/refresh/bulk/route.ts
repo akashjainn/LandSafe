@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
-import { OpenSkyProvider } from "@/lib/providers/opensky";
+import { AviationstackProvider } from "@/lib/providers/aviationstack";
 import { statusFromDTO } from "@/lib/mappers";
 import { BulkRefreshResult } from "@/lib/types";
 import pLimit from "p-limit";
 
 const prisma = getPrisma();
-const flightProvider = new OpenSkyProvider();
+const flightProvider = new AviationstackProvider();
 const limit = pLimit(5); // Cap concurrency at 5 requests
 
 export async function POST(request: NextRequest) {
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
           const snapshot = await prisma.flightStatusSnapshot.create({
             data: {
               flightId: flight.id,
-              provider: "AeroDataBox",
+              provider: "Aviationstack",
               schedDep: statusData.schedDep ? new Date(statusData.schedDep) : null,
               schedArr: statusData.schedArr ? new Date(statusData.schedArr) : null,
               estDep: statusData.estDep ? new Date(statusData.estDep) : null,

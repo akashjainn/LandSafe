@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
-import { OpenSkyProvider } from "@/lib/providers/opensky";
+import { AviationstackProvider } from "@/lib/providers/aviationstack";
 import { statusFromDTO } from "@/lib/mappers";
 
 const prisma = getPrisma();
-const flightProvider = new OpenSkyProvider();
+const flightProvider = new AviationstackProvider();
 
 export async function POST(
   request: NextRequest,
@@ -45,7 +45,7 @@ export async function POST(
     const snapshot = await prisma.flightStatusSnapshot.create({
       data: {
         flightId: flight.id,
-        provider: "AeroDataBox",
+  provider: "Aviationstack",
         schedDep: statusData.schedDep ? new Date(statusData.schedDep) : null,
         schedArr: statusData.schedArr ? new Date(statusData.schedArr) : null,
         estDep: statusData.estDep ? new Date(statusData.estDep) : null,

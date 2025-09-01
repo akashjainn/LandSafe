@@ -18,6 +18,7 @@ model Flight {
   serviceDate    DateTime // local date at origin, stored as UTC midnight
   originIata     String?
   destIata       String?
+  serviceType    String?  // e.g., scheduled, charter, codeshare, etc.
   createdAt      DateTime @default(now())
   createdBy      String?  // optional user identifier/email
   notes          String?  // "John's flight", "arrives with Sarah", etc.
@@ -32,6 +33,8 @@ model Flight {
   latestStatus   FlightStatusCode? @default(SCHEDULED)
 
   statuses       FlightStatusSnapshot[]
+  schedules      Schedule[]
+  opsStatuses    OpsStatus[]
   @@index([serviceDate, carrierIata, flightNumber])
 }
 
@@ -67,4 +70,40 @@ model FlightStatusSnapshot {
   delayReason   String?
   aircraftType  String?
   routeKey      String?          // origin-dest cache key
+}
+
+model Schedule {
+  id           String   @id @default(cuid())
+  flightId     String
+  flight       Flight   @relation(fields: [flightId], references: [id], onDelete: Cascade)
+  schedDep     DateTime?
+  schedArr     DateTime?
+  equipment    String?
+  gateDep      String?
+  gateArr      String?
+  terminalDep  String?
+  terminalArr  String?
+  source       String   @default("Aviationstack")
+  updatedAt    DateTime @updatedAt
+
+  @@index([flightId])
+}
+
+model OpsStatus {
+  id           String           @id @default(cuid())
+  flightId     String
+  flight       Flight           @relation(fields: [flightId], references: [id], onDelete: Cascade)
+  status       FlightStatusCode @default(UNKNOWN)
+  estDep       DateTime?
+  estArr       DateTime?
+  actOff       DateTime?
+  actOn        DateTime?
+  actDepGate   String?
+  actArrGate   String?
+  delayDepMin  Int?
+  delayArrMin  Int?
+  source       String           @default("Aviationstack")
+  updatedAt    DateTime         @updatedAt
+
+  @@index([flightId])
 }
