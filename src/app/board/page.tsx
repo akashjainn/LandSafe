@@ -18,7 +18,6 @@ import {
   RefreshCw, 
   Upload, 
   Plane,
-  Clock,
   MapPin
 } from "lucide-react";
 import { useFlights, useRefreshAllFlights } from "@/hooks/useFlights";
@@ -36,7 +35,7 @@ export default function BoardPage() {
     refreshMutation.mutate(selectedDate);
   };
 
-  const formatTime = (date?: Date | string) => {
+  const formatTime = (date?: Date | string | null) => {
     if (!date) return "—";
     try {
       const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -46,7 +45,7 @@ export default function BoardPage() {
     }
   };
 
-  const formatDate = (date?: Date | string) => {
+  const formatDate = (date?: Date | string | null) => {
     if (!date) return "—";
     try {
       const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -62,7 +61,7 @@ export default function BoardPage() {
     const color = getStatusColor(status);
     const label = getStatusLabel(status);
     
-    const variants: Record<string, any> = {
+    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
       blue: "default",
       indigo: "secondary", 
       green: "secondary",

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
 import { AeroDataProvider } from "@/lib/providers/aerodata";
 import { statusFromDTO } from "@/lib/mappers";
-import { FlightStatusCode } from "@/lib/types";
 
 const prisma = getPrisma();
 const flightProvider = new AeroDataProvider();

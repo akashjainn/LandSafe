@@ -46,7 +46,48 @@ export class AeroDataProvider implements FlightProvider {
     }
   }
 
-  private mapAeroDataResponse(data: any): FlightStatusDTO {
+  // Use a more specific type for AeroDataBox API response
+  private mapAeroDataResponse(data: {
+    departure?: {
+      scheduledTime?: { utc?: string };
+      estimatedTime?: { utc?: string };
+      actualTime?: { utc?: string };
+      gate?: string;
+      terminal?: string;
+      airport?: { iata?: string };
+      delay?: { reasonCode?: string };
+    };
+    arrival?: {
+      scheduledTime?: { utc?: string };
+      estimatedTime?: { utc?: string };
+      actualTime?: { utc?: string };
+      gate?: string;
+      terminal?: string;
+      airport?: { iata?: string };
+    };
+    status?: string;
+    aircraft?: { model?: string };
+  } | Array<{
+    departure?: {
+      scheduledTime?: { utc?: string };
+      estimatedTime?: { utc?: string };
+      actualTime?: { utc?: string };
+      gate?: string;
+      terminal?: string;
+      airport?: { iata?: string };
+      delay?: { reasonCode?: string };
+    };
+    arrival?: {
+      scheduledTime?: { utc?: string };
+      estimatedTime?: { utc?: string };
+      actualTime?: { utc?: string };
+      gate?: string;
+      terminal?: string;
+      airport?: { iata?: string };
+    };
+    status?: string;
+    aircraft?: { model?: string };
+  }>): FlightStatusDTO {
     // Map AeroDataBox response to our standardized format
     const flight = Array.isArray(data) ? data[0] : data;
     
@@ -61,7 +102,7 @@ export class AeroDataProvider implements FlightProvider {
       gateArr: flight.arrival?.gate,
       terminalDep: flight.departure?.terminal,
       terminalArr: flight.arrival?.terminal,
-      status: this.mapStatus(flight.status),
+      status: this.mapStatus(flight.status ?? ""),
       aircraftType: flight.aircraft?.model,
       originIata: flight.departure?.airport?.iata,
       destIata: flight.arrival?.airport?.iata,
@@ -84,7 +125,6 @@ export class AeroDataProvider implements FlightProvider {
 
   private getSyntheticData(query: FlightQuery): FlightStatusDTO {
     // Generate realistic synthetic data for development
-    const now = new Date();
     const baseTime = new Date(query.serviceDateISO);
     
     // Simulate different flight statuses based on flight number

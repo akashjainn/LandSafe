@@ -18,6 +18,7 @@ import { Upload, FileText, Plus, Trash2, Download } from "lucide-react";
 import { useBatchCreateFlights } from "@/hooks/useFlights";
 import { parseCarrierFlightNumber } from "@/lib/types";
 
+// Updated FlightRow type to include all referenced properties
 type FlightRow = {
   id: number;
   label?: string;
@@ -27,6 +28,17 @@ type FlightRow = {
   origin?: string;
   destination?: string;
   notes?: string;
+  flight?: string;
+  airline?: string;
+  flight_number?: string;
+  name?: string;
+  friend?: string;
+  from?: string;
+  departure?: string;
+  dest?: string;
+  to?: string;
+  arrival?: string;
+  comment?: string;
 };
 
 export default function UploadPage() {
@@ -41,7 +53,7 @@ export default function UploadPage() {
     Papa.parse(file, {
       header: true,
       complete: (results) => {
-        const csvFlights = results.data as any[];
+        const csvFlights = results.data as FlightRow[];
         const newRows: FlightRow[] = csvFlights
           .filter(row => row.carrier || row.number || row.flight)
           .map((row, index) => {

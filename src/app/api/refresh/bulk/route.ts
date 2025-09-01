@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
 import { AeroDataProvider } from "@/lib/providers/aerodata";
 import { statusFromDTO } from "@/lib/mappers";
-import { BulkRefreshResult, Flight } from "@/lib/types";
+import { BulkRefreshResult } from "@/lib/types";
 import pLimit from "p-limit";
 
 const prisma = getPrisma();
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     let updated = 0;
 
     // Process flights with concurrency limit
-    const refreshPromises = flights.map((flight: Flight) =>
+    const refreshPromises = flights.map((flight: typeof flights[number]) =>
       limit(async () => {
         try {
           const flightQuery = {

@@ -54,7 +54,7 @@ async function createFlight(flightData: Partial<Flight>) {
   return response.json();
 }
 
-async function batchCreateFlights(flights: any[]) {
+async function batchCreateFlights(flights: Partial<Flight>[]) {
   const response = await fetch("/api/flights/batch", {
     method: "POST",
     headers: {
