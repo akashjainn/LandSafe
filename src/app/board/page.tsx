@@ -9,22 +9,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { 
-  Calendar, 
   RefreshCw, 
   Upload, 
   Plane,
   MapPin,
   Search,
   Filter,
-  Trash2
+  Trash2,
+  Clock,
+  ArrowRight
 } from "lucide-react";
 import { useFlights, useRefreshAllFlights, useDeleteFlight } from "@/hooks/useFlights";
 import { getStatusColor, getStatusLabel, FlightStatusCode } from "@/lib/types";
@@ -51,7 +44,7 @@ export default function BoardPage() {
   };
 
   const handleDeleteFlight = async (flightId: string, flightDetails: string) => {
-    if (confirm(`Are you sure you want to delete flight ${flightDetails}? This action cannot be undone.`)) {
+    if (confirm(`Delete flight ${flightDetails}?`)) {
       try {
         await deleteMutation.mutateAsync(flightId);
       } catch (error) {
@@ -67,8 +60,6 @@ export default function BoardPage() {
     setMonthFilter("");
     setDayFilter("");
   };
-
-  const tzFor = (iata?: string | null) => iataToIana(iata);
 
   const formatDateTime = (date?: Date | string | null, tz?: string) => {
     if (!date) return "—";
@@ -99,7 +90,7 @@ export default function BoardPage() {
     };
 
     return (
-      <Badge variant={variants[color] || "outline"} className={`bg-${color}-100 text-${color}-800 hover:bg-${color}-200`}>
+      <Badge variant={variants[color] || "outline"} className={`bg-${color}-50 text-${color}-700 border-${color}-200`}>
         {label}
       </Badge>
     );
@@ -170,212 +161,223 @@ export default function BoardPage() {
 
   if (error) {
     return (
-      <div className="text-center py-12">
-        <div className="text-red-600 mb-4">Error loading flights</div>
-        <Button onClick={() => window.location.reload()}>Retry</Button>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <Card className="w-full max-w-md mx-4">
+          <CardContent className="pt-6 text-center">
+            <div className="text-red-600 mb-4 font-medium">Unable to load flights</div>
+            <Button onClick={() => window.location.reload()} className="w-full">
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Flight Board</h1>
-          <p className="text-gray-600 mt-1">Real-time flight tracking for your reunion</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshMutation.isPending}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
-            Refresh All
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <a href="/upload">
-              <Upload className="h-4 w-4 mr-2" />
-              Add Flights
-            </a>
-          </Button>
-        </div>
-      </div>
-
-      {/* Search and Filter Controls */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div className="flex items-center gap-2">
-              <Search className="h-4 w-4 text-gray-500" />
-              <Input
-                placeholder="Search flights..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-gray-500" />
-              <Input
-                placeholder="Year (e.g., 2025)"
-                value={yearFilter}
-                onChange={(e) => setYearFilter(e.target.value)}
-                className="w-full"
-              />
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <Input
-                placeholder="Month (1-12)"
-                value={monthFilter}
-                onChange={(e) => setMonthFilter(e.target.value)}
-                className="w-full"
-              />
+              <h1 className="text-4xl font-bold text-slate-900 mb-2">Flight Board</h1>
+              <p className="text-slate-600">Real-time flight tracking for your group</p>
             </div>
-            <div>
-              <Input
-                placeholder="Day (1-31)"
-                value={dayFilter}
-                onChange={(e) => setDayFilter(e.target.value)}
-                className="w-full"
-              />
-            </div>
-            <div>
-              <Button variant="outline" onClick={clearFilters} className="w-full">
-                Clear Filters
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="outline" 
+                onClick={handleRefresh} 
+                disabled={refreshMutation.isPending}
+                className="transition-all duration-200 hover:scale-105"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 transition-transform duration-300 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              <Button 
+                asChild
+                className="transition-all duration-200 hover:scale-105"
+              >
+                <a href="/upload">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Add Flights
+                </a>
               </Button>
             </div>
           </div>
-          <div className="mt-4 text-sm text-gray-500">
-            {flights.length} flight{flights.length !== 1 ? 's' : ''} found
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Flights by Date */}
-      {isLoading ? (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center py-8 text-gray-500">Loading flights...</div>
-          </CardContent>
-        </Card>
-      ) : sortedDates.length === 0 ? (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center py-8">
-              <Plane className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 mb-4">No flights found</p>
-              <Button variant="outline" asChild>
-                <a href="/upload">Add Your First Flight</a>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          {sortedDates.map((dateKey) => (
-            <Card key={dateKey}>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
-                    {format(new Date(dateKey), 'EEEE, MMMM d, yyyy')}
-                  </div>
-                  <Badge variant="outline">
-                    {flightsByDate[dateKey].length} flight{flightsByDate[dateKey].length !== 1 ? 's' : ''}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Flight</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Route</TableHead>
-                        <TableHead>Departure</TableHead>
-                        <TableHead>Arrival</TableHead>
-                        <TableHead>Gates</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="w-16">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {flightsByDate[dateKey].map((flight) => (
-                        <TableRow key={flight.id} className="hover:bg-gray-50">
-                          <TableCell>
-                            <div className="font-medium">
-                              {flight.carrierIata}{flight.flightNumber}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm">
-                              {flight.notes || "—"}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2 text-sm">
-                              <span className="font-mono">{flight.originIata || "—"}</span>
-                              <Plane className="h-3 w-3 text-gray-400" />
-                              <span className="font-mono">{flight.destIata || "—"}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-1">
-                              <div className="text-sm">
-                                <span className="text-gray-500">Scheduled:</span> {formatDateTime(flight.latestSchedDep || flight.latestEstDep, tzFor(flight.originIata))}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-1">
-                              <div className="text-sm">
-                                <span className="text-gray-500">Scheduled:</span> {formatDateTime(flight.latestSchedArr || flight.latestEstArr, tzFor(flight.destIata))}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-1 text-sm">
-                              {flight.latestGateDep && (
-                                <div className="flex items-center gap-1">
-                                  <MapPin className="h-3 w-3 text-gray-400" />
-                                  {flight.latestGateDep}
-                                </div>
-                              )}
-                              {flight.latestGateArr && (
-                                <div className="flex items-center gap-1 text-gray-600">
-                                  <MapPin className="h-3 w-3 text-gray-400" />
-                                  {flight.latestGateArr}
-                                </div>
-                              )}
-                              {!flight.latestGateDep && !flight.latestGateArr && "—"}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {getStatusBadge(flight.latestStatus)}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteFlight(
-                                flight.id, 
-                                `${flight.carrierIata}${flight.flightNumber}`
-                              )}
-                              disabled={deleteMutation.isPending}
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+          {/* Search and Filter Controls */}
+          <Card className="shadow-sm border-0 bg-white/70 backdrop-blur-sm">
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Search flights..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 border-slate-200 focus:border-blue-400 transition-colors"
+                  />
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+                <div className="relative">
+                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Year (e.g., 2025)"
+                    value={yearFilter}
+                    onChange={(e) => setYearFilter(e.target.value)}
+                    className="pl-10 border-slate-200 focus:border-blue-400 transition-colors"
+                  />
+                </div>
+                <Input
+                  placeholder="Month (1-12)"
+                  value={monthFilter}
+                  onChange={(e) => setMonthFilter(e.target.value)}
+                  className="border-slate-200 focus:border-blue-400 transition-colors"
+                />
+                <Input
+                  placeholder="Day (1-31)"
+                  value={dayFilter}
+                  onChange={(e) => setDayFilter(e.target.value)}
+                  className="border-slate-200 focus:border-blue-400 transition-colors"
+                />
+                <Button 
+                  variant="outline" 
+                  onClick={clearFilters} 
+                  className="transition-all duration-200 hover:bg-slate-50"
+                >
+                  Clear
+                </Button>
+              </div>
+              <div className="mt-4 text-sm text-slate-500">
+                {flights.length} flight{flights.length !== 1 ? 's' : ''} found
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      )}
+
+        {/* Flights by Date */}
+        {isLoading ? (
+          <Card className="shadow-sm border-0 bg-white/70 backdrop-blur-sm">
+            <CardContent className="pt-6">
+              <div className="text-center py-12">
+                <RefreshCw className="h-8 w-8 text-slate-400 mx-auto mb-4 animate-spin" />
+                <p className="text-slate-500">Loading flights...</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : sortedDates.length === 0 ? (
+          <Card className="shadow-sm border-0 bg-white/70 backdrop-blur-sm">
+            <CardContent className="pt-6">
+              <div className="text-center py-12">
+                <Plane className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+                <p className="text-slate-500 mb-6">No flights found</p>
+                <Button asChild variant="outline">
+                  <a href="/upload">Add Your First Flight</a>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-6">
+            {sortedDates.map((dateKey) => (
+              <Card key={dateKey} className="shadow-sm border-0 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:shadow-md">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-3 text-xl font-semibold text-slate-800">
+                      <div className="w-2 h-8 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
+                      {format(new Date(dateKey), 'EEEE, MMMM d, yyyy')}
+                    </CardTitle>
+                    <Badge variant="secondary" className="bg-slate-100 text-slate-600">
+                      {flightsByDate[dateKey].length} flight{flightsByDate[dateKey].length !== 1 ? 's' : ''}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4">
+                    {flightsByDate[dateKey].map((flight) => (
+                      <Card key={flight.id} className="transition-all duration-200 hover:shadow-sm border border-slate-200 bg-white">
+                        <CardContent className="p-6">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-6">
+                              {/* Flight Info */}
+                              <div className="text-center">
+                                <div className="text-lg font-bold text-slate-900">
+                                  {flight.carrierIata}{flight.flightNumber}
+                                </div>
+                                <div className="text-sm text-slate-500">
+                                  {flight.notes || "—"}
+                                </div>
+                              </div>
+
+                              {/* Route */}
+                              <div className="flex items-center gap-4">
+                                <div className="text-center">
+                                  <div className="text-2xl font-bold text-slate-700">
+                                    {flight.originIata || "—"}
+                                  </div>
+                                  <div className="text-xs text-slate-500 mt-1">
+                                    {formatDateTime(flight.latestSchedDep || flight.latestEstDep, iataToIana(flight.originIata))}
+                                  </div>
+                                </div>
+                                
+                                <div className="flex items-center">
+                                  <div className="w-12 h-px bg-slate-300"></div>
+                                  <ArrowRight className="h-4 w-4 text-slate-400 mx-2" />
+                                  <div className="w-12 h-px bg-slate-300"></div>
+                                </div>
+                                
+                                <div className="text-center">
+                                  <div className="text-2xl font-bold text-slate-700">
+                                    {flight.destIata || "—"}
+                                  </div>
+                                  <div className="text-xs text-slate-500 mt-1">
+                                    {formatDateTime(flight.latestSchedArr || flight.latestEstArr, iataToIana(flight.destIata))}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Gates */}
+                              {(flight.latestGateDep || flight.latestGateArr) && (
+                                <div className="flex items-center gap-2 text-sm text-slate-600">
+                                  <MapPin className="h-4 w-4" />
+                                  <span>
+                                    {flight.latestGateDep && `Gate ${flight.latestGateDep}`}
+                                    {flight.latestGateDep && flight.latestGateArr && " → "}
+                                    {flight.latestGateArr && `Gate ${flight.latestGateArr}`}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              {/* Status */}
+                              {getStatusBadge(flight.latestStatus)}
+                              
+                              {/* Actions */}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteFlight(
+                                  flight.id, 
+                                  `${flight.carrierIata}${flight.flightNumber}`
+                                )}
+                                disabled={deleteMutation.isPending}
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
