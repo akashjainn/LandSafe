@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const month = searchParams.get("month");
     const day = searchParams.get("day");
 
-    let whereClause: any = {};
+    const whereClause: Record<string, unknown> = {};
 
     // If specific date provided, filter by that date
     if (date) {
@@ -22,10 +22,12 @@ export async function GET(request: NextRequest) {
           { status: 400 }
         );
       }
-      whereClause.serviceDate = {
-        gte: serviceDate,
-        lt: new Date(serviceDate.getTime() + 24 * 60 * 60 * 1000),
-      };
+      Object.assign(whereClause, {
+        serviceDate: {
+          gte: serviceDate,
+          lt: new Date(serviceDate.getTime() + 24 * 60 * 60 * 1000),
+        }
+      });
     }
     // If year/month/day filters provided, build date range
     else if (year || month || day) {
@@ -37,26 +39,32 @@ export async function GET(request: NextRequest) {
       if (year && month && day) {
         // Specific day
         const serviceDate = new Date(filterYear, filterMonth, filterDay);
-        whereClause.serviceDate = {
-          gte: serviceDate,
-          lt: new Date(serviceDate.getTime() + 24 * 60 * 60 * 1000),
-        };
+        Object.assign(whereClause, {
+          serviceDate: {
+            gte: serviceDate,
+            lt: new Date(serviceDate.getTime() + 24 * 60 * 60 * 1000),
+          }
+        });
       } else if (year && month) {
         // Specific month
         const startDate = new Date(filterYear, filterMonth, 1);
         const endDate = new Date(filterYear, filterMonth + 1, 1);
-        whereClause.serviceDate = {
-          gte: startDate,
-          lt: endDate,
-        };
+        Object.assign(whereClause, {
+          serviceDate: {
+            gte: startDate,
+            lt: endDate,
+          }
+        });
       } else if (year) {
         // Specific year
         const startDate = new Date(filterYear, 0, 1);
         const endDate = new Date(filterYear + 1, 0, 1);
-        whereClause.serviceDate = {
-          gte: startDate,
-          lt: endDate,
-        };
+        Object.assign(whereClause, {
+          serviceDate: {
+            gte: startDate,
+            lt: endDate,
+          }
+        });
       }
     }
 

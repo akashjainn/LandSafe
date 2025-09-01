@@ -63,16 +63,6 @@ export default function BoardPage() {
     }
   };
 
-  const formatDate = (date?: Date | string | null) => {
-    if (!date) return "—";
-    try {
-      const dateObj = typeof date === 'string' ? new Date(date) : date;
-      return format(dateObj, "MMM d");
-    } catch {
-      return "—";
-    }
-  };
-
   const getStatusBadge = (status?: FlightStatusCode) => {
     if (!status) return null;
     
