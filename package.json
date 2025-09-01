@@ -10,6 +10,9 @@
     "db:seed": "npx tsx prisma/seed.ts",
     "postinstall": "prisma generate"
   },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "@prisma/client": "^6.15.0",
     "@radix-ui/react-dialog": "^1.1.15",
