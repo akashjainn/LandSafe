@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
 import { OpenSkyProvider } from "@/lib/providers/opensky";
 import { statusFromDTO } from "@/lib/mappers";
+import { iataToIana } from "@/lib/airports";
+import { formatInTimeZone } from "date-fns-tz";
 
 const prisma = getPrisma();
 const flightProvider = new OpenSkyProvider();
@@ -99,7 +101,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { carrierIata, flightNumber, serviceDate, originIata, destIata, notes, createdBy } = body;
+  const { carrierIata, flightNumber, serviceDate, originIata, destIata, notes, createdBy, schedDepLocal, schedArrLocal } = body;
 
     // Validate required fields
     if (!carrierIata || !flightNumber || !serviceDate) {
@@ -125,8 +127,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse and validate service date
-    const parsedDate = new Date(serviceDate);
+  // Parse and validate service date as UTC midnight to avoid TZ drift
+  const parsedDate = new Date(`${serviceDate}T00:00:00Z`);
     if (isNaN(parsedDate.getTime())) {
       return NextResponse.json(
         { error: "Invalid serviceDate format. Use YYYY-MM-DD" },
@@ -168,6 +170,37 @@ export async function POST(request: NextRequest) {
           createdBy,
         },
       });
+    }
+
+    // If manual scheduled times provided (local HH:mm), convert to UTC using airport TZ offset
+    if ((schedDepLocal || schedArrLocal) && (originIata || destIata)) {
+      const dayAnchor = new Date(`${serviceDate}T00:00:00Z`);
+      let latestSchedDep: Date | null | undefined = undefined;
+      let latestSchedArr: Date | null | undefined = undefined;
+
+      if (schedDepLocal && originIata) {
+        const tz = iataToIana(originIata);
+        if (tz) {
+          const offset = formatInTimeZone(dayAnchor, tz, 'XXX');
+          latestSchedDep = new Date(`${serviceDate}T${schedDepLocal}:00${offset}`);
+        }
+      }
+      if (schedArrLocal && destIata) {
+        const tz = iataToIana(destIata);
+        if (tz) {
+          const offset = formatInTimeZone(dayAnchor, tz, 'XXX');
+          latestSchedArr = new Date(`${serviceDate}T${schedArrLocal}:00${offset}`);
+        }
+      }
+      if (latestSchedDep || latestSchedArr) {
+        flight = await prisma.flight.update({
+          where: { id: flight.id },
+          data: {
+            latestSchedDep: latestSchedDep ?? flight.latestSchedDep,
+            latestSchedArr: latestSchedArr ?? flight.latestSchedArr,
+          },
+        });
+      }
     }
 
     // Attempt to fetch and persist latest status so UI has times immediately

@@ -121,7 +121,8 @@ export default function BoardPage() {
 
   // Group flights by date
   const flightsByDate = filteredFlights.reduce((groups, flight) => {
-    const dateKey = format(new Date(flight.serviceDate), 'yyyy-MM-dd');
+    // Use UTC when deriving the service date key to avoid TZ drift
+    const dateKey = formatInTimeZone(new Date(flight.serviceDate), 'UTC', 'yyyy-MM-dd');
     if (!groups[dateKey]) {
       groups[dateKey] = [];
     }
