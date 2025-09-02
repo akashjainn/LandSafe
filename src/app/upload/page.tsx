@@ -368,15 +368,29 @@ export default function UploadPage() {
               <p className="text-gray-600 mb-6">
                 {successCount} flight{successCount > 1 ? 's' : ''} {successCount > 1 ? 'have' : 'has'} been added to your board. Airports and schedules are being populated automatically.
               </p>
-              <Button 
-                onClick={() => {
-                  setShowSuccessModal(false);
-                  router.push("/board");
-                }}
-                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 transition-all duration-200"
-              >
-                View Flight Board
-              </Button>
+              <div className="space-y-3">
+                <Button 
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    router.push("/board");
+                  }}
+                  className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 transition-all duration-200"
+                >
+                  View Flight Board
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    // Reset form for adding more flights
+                    setFlightRows([{ id: Date.now(), date: new Date().toISOString().split('T')[0] }]);
+                    setSuccessCount(0);
+                  }}
+                  variant="outline"
+                  className="w-full border-blue-200 text-blue-600 hover:bg-blue-50 transition-all duration-200"
+                >
+                  Add Another Flight
+                </Button>
+              </div>
             </div>
           </div>
         </div>
