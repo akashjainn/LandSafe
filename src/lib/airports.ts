@@ -1,3 +1,5 @@
+import { IATA_CITY_COUNTRY_EXPANDED } from '../../airport_mappings';
+
 export const IATA_TZ: Record<string, string> = {
   ATL: "America/New_York",
   JFK: "America/New_York",
@@ -25,25 +27,28 @@ export const IATA_TZ: Record<string, string> = {
   FRA: "Europe/Berlin",
   MCO: "America/New_York",
   FLL: "America/New_York",
+  DAL: "America/Chicago",
+  CHS: "America/New_York",
 };
 
+// Legacy mapping for backwards compatibility, but now using comprehensive database
 export const IATA_CITY_COUNTRY: Record<string, string> = {
-  ATL: "Atlanta, USA",
-  JFK: "New York, USA", 
-  LGA: "New York, USA",
-  EWR: "Newark, USA",
-  BOS: "Boston, USA",
-  DCA: "Washington, USA",
-  IAD: "Washington, USA",
-  MSP: "Minneapolis, USA",
-  ORD: "Chicago, USA",
-  DFW: "Dallas, USA",
-  DEN: "Denver, USA",
-  PHX: "Phoenix, USA",
-  LAX: "Los Angeles, USA",
-  SFO: "San Francisco, USA",
-  SEA: "Seattle, USA",
-  AUS: "Austin, USA",
+  ATL: "Atlanta, GA",
+  JFK: "New York, NY", 
+  LGA: "New York, NY",
+  EWR: "Newark, NJ",
+  BOS: "Boston, MA",
+  DCA: "Washington, DC",
+  IAD: "Washington, DC",
+  MSP: "Minneapolis, MN",
+  ORD: "Chicago, IL",
+  DFW: "Dallas, TX",
+  DEN: "Denver, CO",
+  PHX: "Phoenix, AZ",
+  LAX: "Los Angeles, CA",
+  SFO: "San Francisco, CA",
+  SEA: "Seattle, WA",
+  AUS: "Austin, TX",
   HND: "Tokyo, Japan",
   NRT: "Tokyo, Japan",
   KIX: "Osaka, Japan",
@@ -52,8 +57,10 @@ export const IATA_CITY_COUNTRY: Record<string, string> = {
   LHR: "London, UK",
   CDG: "Paris, France",
   FRA: "Frankfurt, Germany",
-  MCO: "Orlando, USA",
-  FLL: "Fort Lauderdale, Florida",
+  MCO: "Orlando, FL",
+  FLL: "Fort Lauderdale, FL",
+  DAL: "Dallas, TX",
+  CHS: "Charleston, SC",
 };
 
 export function iataToIana(iata?: string | null): string | undefined {
@@ -61,11 +68,24 @@ export function iataToIana(iata?: string | null): string | undefined {
 }
 
 export function iataToCity(iata?: string | null): string | undefined {
-  return iata ? IATA_CITY_COUNTRY[iata.toUpperCase()] : undefined;
+  if (!iata) return undefined;
+  const upperIata = iata.toUpperCase();
+  
+  // First try the comprehensive database
+  const expandedCity = IATA_CITY_COUNTRY_EXPANDED[upperIata];
+  if (expandedCity) return expandedCity;
+  
+  // Fallback to legacy mapping for compatibility
+  return IATA_CITY_COUNTRY[upperIata];
 }
 
 export function formatAirport(iata?: string | null): string {
   if (!iata) return "—";
+  return iata;
+}
+
+export function formatAirportWithCity(iata?: string | null): { code: string; city?: string } {
+  if (!iata) return { code: "—" };
   const city = iataToCity(iata);
-  return city ? `${iata} (${city})` : iata;
+  return { code: iata, city };
 }

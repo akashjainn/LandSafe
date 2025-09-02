@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
-import { iataToIana, formatAirport } from "@/lib/airports";
+import { iataToIana, formatAirportWithCity } from "@/lib/airports";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -337,7 +337,15 @@ export default function BoardPage() {
                               <div className="flex items-center gap-4">
                                 <div className="text-center">
                                   <div className="text-2xl font-bold text-slate-700">
-                                    {formatAirport(flight.originIata)}
+                                    {(() => {
+                                      const airport = formatAirportWithCity(flight.originIata);
+                                      return (
+                                        <div>
+                                          <div>{airport.code}</div>
+                                          {airport.city && <div className="text-xs text-slate-500 font-normal">{airport.city}</div>}
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                   <div className="text-xs text-slate-500 mt-1">
                                     {formatDateTime(flight.latestSchedDep || flight.latestEstDep, iataToIana(flight.originIata))}
@@ -352,7 +360,15 @@ export default function BoardPage() {
                                 
                                 <div className="text-center">
                                   <div className="text-2xl font-bold text-slate-700">
-                                    {formatAirport(flight.destIata)}
+                                    {(() => {
+                                      const airport = formatAirportWithCity(flight.destIata);
+                                      return (
+                                        <div>
+                                          <div>{airport.code}</div>
+                                          {airport.city && <div className="text-xs text-slate-500 font-normal">{airport.city}</div>}
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                   <div className="text-xs text-slate-500 mt-1">
                                     {formatDateTime(flight.latestSchedArr || flight.latestEstArr, iataToIana(flight.destIata))}

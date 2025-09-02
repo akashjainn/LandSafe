@@ -1,119 +1,170 @@
 "use client";
 
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plane, Users, Clock, Shield } from "lucide-react";
+import { EmptyFlights } from "@/components/empty-state";
+import { useFlights } from "@/hooks/useFlights";
+import { Plane, Clock, TrendingUp, Eye, Plus } from "lucide-react";
 
-export default function HomePage() {
+export default function DashboardPage() {
+  const { data: flights = [], isLoading } = useFlights();
+
+  // Calculate KPIs
+  const totalFlights = flights.length;
+  const onTimeFlights = flights.filter(f => 
+    f.latestStatus?.toLowerCase().includes('on') || 
+    f.latestStatus?.toLowerCase().includes('time')
+  ).length;
+  const onTimePercentage = totalFlights > 0 ? Math.round((onTimeFlights / totalFlights) * 100) : 0;
+
+  // Recent activity (last 10 flights sorted by creation time)
+  const recentFlights = flights
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 10);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader className="pb-2">
+                <div className="h-4 bg-slate-200 rounded w-20"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 bg-slate-200 rounded w-16"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-12">
-      {/* Hero Section */}
-      <div className="text-center space-y-6 py-12">
-        <div className="flex justify-center">
-          <Plane className="h-16 w-16 text-blue-600" />
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
+          <p className="text-slate-600">Overview of your tracked flights</p>
         </div>
-        <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl">
-          Welcome to LandSafe
-        </h1>
-        <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-          Track all your friends&apos; flights in one place for your reunion. Never miss an arrival again.
-        </p>
-        <div className="flex gap-4 justify-center">
-          <Button asChild size="lg">
-            <Link href="/board">View Flight Board</Link>
-          </Button>
-          <Button asChild variant="outline" size="lg">
-            <Link href="/upload">Add Flights</Link>
-          </Button>
-        </div>
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Flight
+        </Button>
       </div>
 
-      {/* Features */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
-          <CardHeader className="text-center">
-            <Users className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-            <CardTitle className="text-lg">Group Tracking</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Flights Tracked Today</CardTitle>
+            <Plane className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <CardDescription>
-              Add multiple flights and track all your friends&apos; arrivals in one dashboard.
-            </CardDescription>
+            <div className="text-2xl font-bold">{totalFlights}</div>
+            <p className="text-xs text-slate-600">
+              Active monitoring
+            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="text-center">
-            <Clock className="h-8 w-8 text-green-600 mx-auto mb-2" />
-            <CardTitle className="text-lg">Real-time Updates</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">On-time Performance</CardTitle>
+            <TrendingUp className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <CardDescription>
-              Get live flight status updates including delays, gate changes, and arrival times.
-            </CardDescription>
+            <div className="text-2xl font-bold">{onTimePercentage}%</div>
+            <p className="text-xs text-slate-600">
+              {onTimeFlights} of {totalFlights} flights
+            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="text-center">
-            <Shield className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-            <CardTitle className="text-lg">Reliable Data</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Average Delay</CardTitle>
+            <Clock className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <CardDescription>
-              Powered by aviation APIs for accurate and up-to-date flight information.
-            </CardDescription>
+            <div className="text-2xl font-bold">—</div>
+            <p className="text-xs text-slate-600">
+              Minutes behind schedule
+            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="text-center">
-            <Plane className="h-8 w-8 text-orange-600 mx-auto mb-2" />
-            <CardTitle className="text-lg">Easy Setup</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Currently Watching</CardTitle>
+            <Eye className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <CardDescription>
-              Simply upload a CSV file or manually add flights to get started immediately.
-            </CardDescription>
+            <div className="text-2xl font-bold">{totalFlights}</div>
+            <p className="text-xs text-slate-600">
+              Active flights
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Quick Start */}
-      <Card className="bg-blue-50 border-blue-200">
-        <CardHeader>
-          <CardTitle className="text-center text-blue-900">Quick Start</CardTitle>
-          <CardDescription className="text-center text-blue-700">
-            Get started with LandSafe in just a few steps
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid md:grid-cols-3 gap-6 text-center">
-            <div>
-              <div className="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center mx-auto mb-2 text-sm font-semibold">
-                1
+      {/* Recent Activity */}
+      {totalFlights === 0 ? (
+        <EmptyFlights />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+              <CardDescription>
+                Latest flight updates and status changes
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recentFlights.map((flight) => (
+                  <div key={flight.id} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+                    <div>
+                      <div className="font-medium text-sm">{flight.flightNumber}</div>
+                      <div className="text-xs text-slate-600">
+                        {flight.originIata} → {flight.destIata}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-slate-500">
+                        {new Date(flight.createdAt).toLocaleTimeString()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <h3 className="font-semibold text-blue-900">Add Flights</h3>
-              <p className="text-sm text-blue-700">Upload a CSV or manually add your friends&apos; flight details</p>
-            </div>
-            <div>
-              <div className="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center mx-auto mb-2 text-sm font-semibold">
-                2
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Add Flight</CardTitle>
+              <CardDescription>
+                Track a new flight quickly
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <p className="text-sm text-slate-600">
+                  Add flights to start monitoring their status in real-time.
+                </p>
+                <div className="flex gap-2">
+                  <Button>Add Flight</Button>
+                  <Button variant="outline">Import CSV</Button>
+                </div>
               </div>
-              <h3 className="font-semibold text-blue-900">Monitor Status</h3>
-              <p className="text-sm text-blue-700">Watch real-time updates on the flight board</p>
-            </div>
-            <div>
-              <div className="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center mx-auto mb-2 text-sm font-semibold">
-                3
-              </div>
-              <h3 className="font-semibold text-blue-900">Stay Informed</h3>
-              <p className="text-sm text-blue-700">Get notified of delays and coordinate meetups</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
