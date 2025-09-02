@@ -156,6 +156,8 @@ export async function POST(request: NextRequest) {
             latestEstArr: snapshot.estArr,
             latestGateDep: snapshot.gateDep,
             latestGateArr: snapshot.gateArr,
+            latestTerminalDep: snapshot.terminalDep,
+            latestTerminalArr: snapshot.terminalArr,
             latestStatus: snapshot.status,
             originIata: statusData.originIata || flight.originIata,
             destIata: statusData.destIata || flight.destIata,

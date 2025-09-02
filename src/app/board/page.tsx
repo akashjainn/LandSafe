@@ -18,7 +18,7 @@ import {
   Trash2,
   ArrowRight
 } from "lucide-react";
-import { useFlights, useRefreshAllFlights, useDeleteFlight } from "@/hooks/useFlights";
+import { useFlights, useRefreshAllFlights, useDeleteFlight, useRefreshFlight } from "@/hooks/useFlights";
 import { getStatusColor, getStatusLabel, FlightStatusCode, Flight } from "@/lib/types";
 import { displayFlightIata } from "@/lib/airlineCodes";
 
@@ -38,6 +38,7 @@ export default function BoardPage() {
   const { data: flights = [], isLoading, error } = useFlights(Object.keys(filters).length > 0 ? filters : undefined);
   const refreshMutation = useRefreshAllFlights();
   const deleteMutation = useDeleteFlight();
+  const refreshOne = useRefreshFlight();
 
   const handleRefresh = () => {
     refreshMutation.mutate(Object.keys(filters).length > 0 ? filters : undefined);
@@ -348,7 +349,7 @@ export default function BoardPage() {
                                     })()}
                                   </div>
                                   <div className="text-xs text-slate-500 mt-1">
-                                    {formatDateTime(flight.latestSchedDep || flight.latestEstDep, iataToIana(flight.originIata))}
+                                    {formatDateTime(flight.latestEstDep || flight.latestSchedDep, iataToIana(flight.originIata))}
                                   </div>
                                 </div>
                                 
@@ -371,24 +372,24 @@ export default function BoardPage() {
                                     })()}
                                   </div>
                                   <div className="text-xs text-slate-500 mt-1">
-                                    {formatDateTime(flight.latestSchedArr || flight.latestEstArr, iataToIana(flight.destIata))}
+                                    {formatDateTime(flight.latestEstArr || flight.latestSchedArr, iataToIana(flight.destIata))}
                                   </div>
                                 </div>
                               </div>
 
                               {/* Terminals & Gates */}
-                              {(flight.latestGateDep || flight.latestGateArr || flight.latestTerminalDep || flight.latestTerminalArr) && (
+            {(flight.latestGateDep || flight.latestGateArr || flight.latestTerminalDep || flight.latestTerminalArr) && (
                                 <div className="flex items-center gap-3 text-sm text-slate-600">
                                   <MapPin className="h-4 w-4" />
                                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
                                     <span>
-                                      {`Dep: ${flight.latestTerminalDep ? `T${flight.latestTerminalDep}` : '—'}`}
-                                      {flight.latestGateDep ? ` · Gate ${flight.latestGateDep}` : ''}
+              {`Dep: ${flight.latestGateDep ? `Gate ${flight.latestGateDep}` : (flight.latestTerminalDep ? `Terminal ${flight.latestTerminalDep}` : '—')}`}
+              {flight.latestGateDep && flight.latestTerminalDep ? ` · Term ${flight.latestTerminalDep}` : ''}
                                     </span>
                                     <span className="hidden sm:inline">|</span>
                                     <span>
-                                      {`Arr: ${flight.latestTerminalArr ? `T${flight.latestTerminalArr}` : '—'}`}
-                                      {flight.latestGateArr ? ` · Gate ${flight.latestGateArr}` : ''}
+              {`Arr: ${flight.latestGateArr ? `Gate ${flight.latestGateArr}` : (flight.latestTerminalArr ? `Terminal ${flight.latestTerminalArr}` : '—')}`}
+              {flight.latestGateArr && flight.latestTerminalArr ? ` · Term ${flight.latestTerminalArr}` : ''}
                                     </span>
                                   </div>
                                 </div>
@@ -396,6 +397,17 @@ export default function BoardPage() {
                             </div>
 
                             <div className="flex items-center gap-3">
+                              {/* Per-flight Refresh */}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => refreshOne.mutate(flight.id)}
+                                disabled={refreshOne.isPending}
+                                className="h-8 w-8 p-0 text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors"
+                                title="Refresh this flight"
+                              >
+                                <RefreshCw className={`h-4 w-4 ${refreshOne.isPending ? 'animate-spin' : ''}`} />
+                              </Button>
                               {/* Status */}
                               {getStatusBadge(flight)}
                               

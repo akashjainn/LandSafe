@@ -3,6 +3,18 @@ const ICAO_TO_IATA: Record<string, string> = {
   SWA: "WN", UAL: "UA", AAL: "AA", DAL: "DL", ASA: "AS", JBU: "B6", NKS: "NK", FFT: "F9",
   WJA: "WS", ACA: "AC",
 
+  // US Regionals (ICAO -> IATA)
+  EDV: "9E", // Endeavor Air (Delta Connection)
+  SKW: "OO", // SkyWest Airlines
+  ENY: "MQ", // Envoy Air
+  RPA: "YX", // Republic Airways
+  AWI: "ZW", // Air Wisconsin
+  JIA: "OH", // PSA Airlines
+  PDT: "PT", // Piedmont Airlines
+  ASQ: "EV", // ExpressJet (historical; some data may still reference)
+  GJS: "G7", // GoJet Airlines
+  QXE: "QX", // Horizon Air
+
   // Europe
   BAW: "BA", AFR: "AF", DLH: "LH", RYR: "FR", SWR: "LX", SAS: "SK", VIR: "VS", VLG: "VY", AUA: "OS",
 

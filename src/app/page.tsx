@@ -170,8 +170,8 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div className="text-right text-xs text-slate-600">
-                        <div>Dep: {fmtLocal(flight.latestSchedDep || flight.latestEstDep, depTz)}</div>
-                        <div>Arr: {fmtLocal(flight.latestSchedArr || flight.latestEstArr, arrTz)}</div>
+                        <div>Dep: {fmtLocal(flight.latestEstDep || flight.latestSchedDep, depTz)}</div>
+                        <div>Arr: {fmtLocal(flight.latestEstArr || flight.latestSchedArr, arrTz)}</div>
                       </div>
                     </div>
                   );
