@@ -51,8 +51,8 @@ export function EmptyFlights() {
       }
       actions={
         <>
-          <Button>Add Flight</Button>
-          <Button variant="outline">Import CSV</Button>
+          <Button asChild><a href="/upload">Add Flight</a></Button>
+          <Button asChild variant="outline"><a href="/upload">Import CSV</a></Button>
         </>
       }
     />
