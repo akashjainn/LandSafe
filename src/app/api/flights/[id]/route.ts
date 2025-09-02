@@ -8,6 +8,7 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+  const uid = request.cookies.get("uid")?.value;
     const { id } = await context.params;
 
     if (!id) {
@@ -17,15 +18,17 @@ export async function DELETE(
       );
     }
 
+    // Verify ownership
+    const owned = await prisma.flight.findFirst({ where: { id, ...(uid ? { createdBy: uid } : { createdBy: null }) } });
+    if (!owned) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     // First, delete all related flight status snapshots
-    await prisma.flightStatusSnapshot.deleteMany({
-      where: { flightId: id },
-    });
+    await prisma.flightStatusSnapshot.deleteMany({ where: { flightId: id } });
 
     // Then delete the flight
-    const deletedFlight = await prisma.flight.delete({
-      where: { id },
-    });
+    const deletedFlight = await prisma.flight.delete({ where: { id } });
 
     return NextResponse.json({
       success: true,

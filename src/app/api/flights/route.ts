@@ -13,6 +13,9 @@ const flightProvider = new AeroDataProvider();
 
 export async function GET(request: NextRequest) {
   try {
+  // Per-user scoping via uid cookie
+  const existingUid = request.cookies.get("uid")?.value;
+  const uid = existingUid || (globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : Math.random().toString(36).slice(2));
     const { searchParams } = new URL(request.url);
     const date = searchParams.get("date");
     const year = searchParams.get("year");
@@ -76,7 +79,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get flights with optional filtering
+    // Always filter by current user
+    Object.assign(whereClause, { createdBy: uid });
+
+    // Get flights with optional filtering for this user
     const flights = await prisma.flight.findMany({
       where: whereClause,
       orderBy: [
@@ -88,10 +94,14 @@ export async function GET(request: NextRequest) {
       ],
     });
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       success: true,
       data: flights,
     });
+    if (!existingUid) {
+      res.cookies.set("uid", uid, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 365 });
+    }
+    return res;
   } catch (error) {
     console.error("Error fetching flights:", error);
     return NextResponse.json(
@@ -103,7 +113,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+  // Per-user scoping via uid cookie
+  const existingUid = request.cookies.get("uid")?.value;
+  const uid = existingUid || (globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : Math.random().toString(36).slice(2));
+  const body = await request.json();
   const { carrierIata, flightNumber, serviceDate, originIata, destIata, notes, createdBy, schedDepLocal, schedArrLocal, schedDepLocalDate, schedArrLocalDate } = body as {
     carrierIata?: string; flightNumber: string; serviceDate: string; originIata?: string; destIata?: string; notes?: string; createdBy?: string;
     schedDepLocal?: string; schedArrLocal?: string; schedDepLocalDate?: string; schedArrLocalDate?: string;
@@ -169,7 +182,8 @@ export async function POST(request: NextRequest) {
       where: {
     carrierIata: (carrierFinal || derivedCarrier || carrierIata) as string,
     flightNumber: derivedNumber,
-        serviceDate: parsedDate,
+    serviceDate: parsedDate,
+    createdBy: uid,
       },
     });
 
@@ -182,7 +196,7 @@ export async function POST(request: NextRequest) {
           originIata: originFinal,
           destIata: destFinal,
           notes,
-          createdBy,
+          createdBy: uid,
           // Sched times will be filled from provider below if available
         },
       });
@@ -196,7 +210,7 @@ export async function POST(request: NextRequest) {
           originIata: originFinal,
           destIata: destFinal,
           notes,
-          createdBy,
+          createdBy: uid,
           // Sched times will be filled from provider below if available
         },
       });
@@ -319,10 +333,14 @@ export async function POST(request: NextRequest) {
       console.error("Post-create refresh failed:", e);
     }
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       success: true,
       data: flight,
     });
+    if (!existingUid) {
+      res.cookies.set("uid", uid, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 365 });
+    }
+    return res;
   } catch (error) {
     console.error("Error creating/updating flight:", error);
     return NextResponse.json(

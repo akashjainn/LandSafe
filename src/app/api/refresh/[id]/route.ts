@@ -13,11 +13,12 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const uid = request.cookies.get("uid")?.value;
     const { id } = await params;
 
-    // Get the flight
-    const flight = await prisma.flight.findUnique({
-      where: { id },
+    // Get the flight for this user
+    const flight = await prisma.flight.findFirst({
+      where: { id, ...(uid ? { createdBy: uid } : { createdBy: null }) },
     });
 
     if (!flight) {
