@@ -3,6 +3,7 @@ import { getPrisma } from "@/lib/db";
 import { parseCarrierFlightNumber } from "@/lib/types";
 import { AeroDataProvider } from "@/lib/providers/aerodata";
 import { statusFromDTO } from "@/lib/mappers";
+import { normalizeAirlineCode } from "@/lib/airlineCodes";
 
 const prisma = getPrisma();
 const flightProvider = new AeroDataProvider();
@@ -122,9 +123,11 @@ export async function POST(request: NextRequest) {
         // Fetch and persist latest status
         try {
           const statusData = await flightProvider.getStatus({
-            carrierIata: resolvedCarrier,
+            carrierIata: normalizeAirlineCode(resolvedCarrier),
             flightNumber: derivedNumber,
             serviceDateISO: serviceDate.toISOString().split('T')[0],
+            originIata: resolvedOrigin,
+            destIata: resolvedDest,
           });
 
           if (statusData) {

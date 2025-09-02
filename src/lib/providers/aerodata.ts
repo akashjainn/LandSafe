@@ -1,5 +1,6 @@
 import { FlightProvider, FlightProviderError } from "./flightProvider";
 import { FlightStatusDTO, FlightQuery, FlightStatusCode } from "../types";
+import { normalizeAirlineCode } from "../airlineCodes";
 
 export class AeroDataProvider implements FlightProvider {
   private apiKey: string;
@@ -10,14 +11,15 @@ export class AeroDataProvider implements FlightProvider {
   }
 
   async getStatus(query: FlightQuery): Promise<FlightStatusDTO | null> {
-    // If no API key, return synthetic data for development
+    // If no API key, don't fabricate data
     if (!this.apiKey || this.apiKey === "your_aerodata_api_key_here") {
-      return this.getSyntheticData(query);
+      return null;
     }
 
     try {
-      const { carrierIata, flightNumber, serviceDateISO } = query;
-      const flightId = `${carrierIata}${flightNumber}`;
+  const carrier = normalizeAirlineCode(query.carrierIata);
+  const flightId = `${carrier}${query.flightNumber}`;
+  const serviceDateISO = query.serviceDateISO; // should be origin-local date
       
       // AeroDataBox API endpoint format
       const url = `${this.baseUrl}/number/${flightId}/${serviceDateISO}`;
@@ -36,76 +38,58 @@ export class AeroDataProvider implements FlightProvider {
         );
       }
 
-      const data = await response.json();
-      return this.mapAeroDataResponse(data);
+  const data: AeroDataBoxFlight | AeroDataBoxFlight[] = await response.json();
+
+      // Tight selection: ensure airline/date match; filter by airports if provided
+  const list: AeroDataBoxFlight[] = Array.isArray(data) ? data : [data];
+      const depDateLocal = serviceDateISO;
+      const orig = query.originIata?.toUpperCase();
+      const dest = query.destIata?.toUpperCase();
+
+      const candidates = list.filter((r) =>
+        r?.airline?.iata?.toUpperCase() === carrier && r?.flight_date === depDateLocal &&
+        (!orig || r?.departure?.airport?.iata?.toUpperCase() === orig || r?.departure?.iata?.toUpperCase() === orig) &&
+        (!dest || r?.arrival?.airport?.iata?.toUpperCase() === dest || r?.arrival?.iata?.toUpperCase() === dest)
+      );
+
+      const best = (candidates.length ? candidates : list)
+        .sort((a, b) => new Date(a?.departure?.scheduled || 0).getTime() - new Date(b?.departure?.scheduled || 0).getTime())[0];
+
+      if (!best) return null;
+  return this.mapAeroDataResponse(best);
     } catch (error) {
       console.error("AeroDataProvider error:", error);
-      
-      // Fall back to synthetic data if API fails
-      return this.getSyntheticData(query);
+      return null;
     }
   }
 
   // Use a more specific type for AeroDataBox API response
-  private mapAeroDataResponse(data: {
-    departure?: {
-      scheduledTime?: { utc?: string };
-      estimatedTime?: { utc?: string };
-      actualTime?: { utc?: string };
-      gate?: string;
-      terminal?: string;
-      airport?: { iata?: string };
-      delay?: { reasonCode?: string };
-    };
-    arrival?: {
-      scheduledTime?: { utc?: string };
-      estimatedTime?: { utc?: string };
-      actualTime?: { utc?: string };
-      gate?: string;
-      terminal?: string;
-      airport?: { iata?: string };
-    };
-    status?: string;
-    aircraft?: { model?: string };
-  } | Array<{
-    departure?: {
-      scheduledTime?: { utc?: string };
-      estimatedTime?: { utc?: string };
-      actualTime?: { utc?: string };
-      gate?: string;
-      terminal?: string;
-      airport?: { iata?: string };
-      delay?: { reasonCode?: string };
-    };
-    arrival?: {
-      scheduledTime?: { utc?: string };
-      estimatedTime?: { utc?: string };
-      actualTime?: { utc?: string };
-      gate?: string;
-      terminal?: string;
-      airport?: { iata?: string };
-    };
-    status?: string;
-    aircraft?: { model?: string };
-  }>): FlightStatusDTO {
-    // Map AeroDataBox response to our standardized format
-    const flight = Array.isArray(data) ? data[0] : data;
-    
+  private mapAeroDataResponse(data: AeroDataBoxFlight): FlightStatusDTO {
+    const flight = data;
+
+    // Prefer top-level fields if present; otherwise nested .utc
+    const depSched = flight.departure?.scheduled || flight.departure?.scheduledTime?.utc;
+    const arrSched = flight.arrival?.scheduled || flight.arrival?.scheduledTime?.utc;
+    const depEst = flight.departure?.estimated || flight.departure?.estimatedTime?.utc;
+    const arrEst = flight.arrival?.estimated || flight.arrival?.estimatedTime?.utc;
+    const depAct = flight.departure?.actual || flight.departure?.actualTime?.utc;
+    const arrAct = flight.arrival?.actual || flight.arrival?.actualTime?.utc;
+
     return {
-      schedDep: flight.departure?.scheduledTime?.utc,
-      schedArr: flight.arrival?.scheduledTime?.utc,
-      estDep: flight.departure?.estimatedTime?.utc,
-      estArr: flight.arrival?.estimatedTime?.utc,
-      actDep: flight.departure?.actualTime?.utc,
-      actArr: flight.arrival?.actualTime?.utc,
-      gateDep: flight.departure?.gate,
-      gateArr: flight.arrival?.gate,
+      schedDep: depSched,
+      schedArr: arrSched,
+      estDep: depEst,
+      estArr: arrEst,
+      actDep: depAct,
+      actArr: arrAct,
+      gateDep: flight.departure?.gate || undefined,
+      gateArr: flight.arrival?.gate || undefined,
       terminalDep: flight.departure?.terminal,
       terminalArr: flight.arrival?.terminal,
       status: this.mapStatus(flight.status ?? ""),
       aircraftType: flight.aircraft?.model,
-      originIata: flight.departure?.airport?.iata,
-      destIata: flight.arrival?.airport?.iata,
+      originIata: flight.departure?.airport?.iata || flight.departure?.iata,
+      destIata: flight.arrival?.airport?.iata || flight.arrival?.iata,
       delayReason: flight.departure?.delay?.reasonCode,
     };
   }
@@ -123,48 +107,31 @@ export class AeroDataProvider implements FlightProvider {
     return statusMap[apiStatus] || FlightStatusCode.UNKNOWN;
   }
 
-  private getSyntheticData(query: FlightQuery): FlightStatusDTO {
-    // Generate realistic synthetic data for development
-    const baseTime = new Date(query.serviceDateISO);
-    
-    // Simulate different flight statuses based on flight number
-    const flightNum = parseInt(query.flightNumber);
-    let status: FlightStatusCode;
-    let delayMinutes = 0;
-
-    if (flightNum % 5 === 0) {
-      status = FlightStatusCode.DELAYED;
-      delayMinutes = 30;
-    } else if (flightNum % 7 === 0) {
-      status = FlightStatusCode.CANCELLED;
-    } else if (flightNum % 3 === 0) {
-      status = FlightStatusCode.BOARDING;
-    } else if (flightNum % 2 === 0) {
-      status = FlightStatusCode.ENROUTE;
-    } else {
-      status = FlightStatusCode.SCHEDULED;
-    }
-
-    const schedDep = new Date(baseTime.getTime() + 14 * 60 * 60 * 1000); // 2 PM
-    const schedArr = new Date(baseTime.getTime() + 17 * 60 * 60 * 1000); // 5 PM
-    
-    const estDep = new Date(schedDep.getTime() + delayMinutes * 60 * 1000);
-    const estArr = new Date(schedArr.getTime() + delayMinutes * 60 * 1000);
-
-    return {
-      schedDep: schedDep.toISOString(),
-      schedArr: schedArr.toISOString(),
-      estDep: status !== FlightStatusCode.CANCELLED ? estDep.toISOString() : undefined,
-      estArr: status !== FlightStatusCode.CANCELLED ? estArr.toISOString() : undefined,
-      gateDep: status !== FlightStatusCode.CANCELLED ? `A${Math.floor(Math.random() * 20) + 1}` : undefined,
-      gateArr: status !== FlightStatusCode.CANCELLED ? `B${Math.floor(Math.random() * 30) + 1}` : undefined,
-      terminalDep: "1",
-      terminalArr: "2", 
-      status,
-      aircraftType: ["Boeing 737", "Airbus A320", "Boeing 757", "Embraer 190"][Math.floor(Math.random() * 4)],
-      originIata: ["LAX", "JFK", "ORD", "DFW", "ATL"][Math.floor(Math.random() * 5)],
-      destIata: ["LGA", "EWR", "JFK", "BOS", "DCA"][Math.floor(Math.random() * 5)],
-      delayReason: status === FlightStatusCode.DELAYED ? "Weather" : undefined,
-    };
-  }
+  // no synthetic fallback
 }
+
+// Minimal type for AeroDataBox flight objects used here
+type AeroDataBoxTime = { utc?: string } | string | undefined;
+type AeroDataBoxAirport = { iata?: string } | undefined;
+type AeroDataBoxLeg = {
+  scheduled?: string;
+  estimated?: string;
+  actual?: string;
+  scheduledTime?: { utc?: string };
+  estimatedTime?: { utc?: string };
+  actualTime?: { utc?: string };
+  gate?: string;
+  terminal?: string;
+  airport?: { iata?: string };
+  iata?: string;
+  delay?: { reasonCode?: string };
+};
+type AeroDataBoxFlight = {
+  flight_date?: string;
+  status?: string;
+  airline?: { iata?: string; icao?: string };
+  flight?: { iata?: string; icao?: string; number?: string };
+  departure?: AeroDataBoxLeg;
+  arrival?: AeroDataBoxLeg;
+  aircraft?: { model?: string };
+};

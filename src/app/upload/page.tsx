@@ -14,7 +14,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Upload, FileText, Plus, Trash2, Download } from "lucide-react";
+import { Upload, FileText, Plus, Trash2, Download, CheckCircle } from "lucide-react";
 import { useBatchCreateFlights } from "@/hooks/useFlights";
 import { parseCarrierFlightNumber } from "@/lib/types";
 
@@ -47,6 +47,8 @@ export default function UploadPage() {
     { id: 1, date: new Date().toISOString().split('T')[0] }
   ]);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successCount, setSuccessCount] = useState(0);
   const batchCreateMutation = useBatchCreateFlights();
 
   const handleFileUpload = (file: File) => {
@@ -138,8 +140,6 @@ export default function UploadPage() {
       .map(row => ({
         label: row.label,
         date: row.date,
-        originIata: row.origin,
-        destIata: row.destination,
         notes: row.notes || row.label,
         ...(row.flight
           ? { flight: row.flight }
@@ -154,8 +154,8 @@ export default function UploadPage() {
 
     try {
       await batchCreateMutation.mutateAsync(validFlights);
-      alert(`Successfully added ${validFlights.length} flight(s)!`);
-      router.push("/board");
+      setSuccessCount(validFlights.length);
+      setShowSuccessModal(true);
     } catch (error) {
       console.error("Error creating flights:", error);
       alert("Error adding flights. Please try again.");
@@ -252,7 +252,7 @@ export default function UploadPage() {
                 label,flight,date,notes<br/>
                 John,DL295,2025-09-15,From LA
               </div>
-              <p className="text-xs">Also supported: legacy columns carrier,number,origin,destination.</p>
+              <p className="text-xs">CSV files with only flight and date are preferred since airports auto-populate from our flight database.</p>
             </div>
           </CardContent>
         </Card>
@@ -282,8 +282,6 @@ export default function UploadPage() {
                     <TableHead>Friend/Label</TableHead>
                     <TableHead>Flight</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead>Origin</TableHead>
-                    <TableHead>Destination</TableHead>
                     <TableHead>Notes</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
@@ -313,24 +311,6 @@ export default function UploadPage() {
                           value={row.date || ""}
                           onChange={(e) => updateRow(row.id, "date", e.target.value)}
                           className="w-36"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          value={row.origin || ""}
-                          onChange={(e) => updateRow(row.id, "origin", e.target.value.toUpperCase())}
-                          placeholder="LAX"
-                          maxLength={3}
-                          className="w-20"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          value={row.destination || ""}
-                          onChange={(e) => updateRow(row.id, "destination", e.target.value.toUpperCase())}
-                          placeholder="JFK"
-                          maxLength={3}
-                          className="w-20"
                         />
                       </TableCell>
                       <TableCell>
@@ -373,6 +353,34 @@ export default function UploadPage() {
           {batchCreateMutation.isPending ? "Adding Flights..." : `Add ${flightRows.filter(r => (r.flight && r.date) || (r.carrier && r.number && r.date)).length} Flight(s)`}
         </Button>
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 transform transition-all duration-300 scale-100">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Flight{successCount > 1 ? 's' : ''} Successfully Added
+              </h3>
+              <p className="text-gray-600 mb-6">
+                {successCount} flight{successCount > 1 ? 's' : ''} {successCount > 1 ? 'have' : 'has'} been added to your board. Airports and schedules are being populated automatically.
+              </p>
+              <Button 
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  router.push("/board");
+                }}
+                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 transition-all duration-200"
+              >
+                View Flight Board
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

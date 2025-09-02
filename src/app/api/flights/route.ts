@@ -3,6 +3,7 @@ import { getPrisma } from "@/lib/db";
 import { AeroDataProvider } from "@/lib/providers/aerodata";
 import { statusFromDTO } from "@/lib/mappers";
 import { iataToIana } from "@/lib/airports";
+import { normalizeAirlineCode } from "@/lib/airlineCodes";
 import { formatInTimeZone } from "date-fns-tz";
 
 const prisma = getPrisma();
@@ -237,7 +238,7 @@ export async function POST(request: NextRequest) {
     try {
       type ProviderQuery = { carrierIata: string; flightNumber: string; serviceDateISO: string; originIata?: string; destIata?: string };
       const providerQuery: ProviderQuery = {
-        carrierIata: (carrierFinal || derivedCarrier || carrierIata || "") as string,
+        carrierIata: normalizeAirlineCode((carrierFinal || derivedCarrier || carrierIata || "") as string),
         flightNumber: derivedNumber,
         serviceDateISO: parsedDate.toISOString().split("T")[0],
         ...(originFinal ? { originIata: originFinal } : {}),

@@ -75,7 +75,9 @@ export type FlightStatusDTO = {
 export type FlightQuery = {
   carrierIata: string;
   flightNumber: string;
-  serviceDateISO: string; // YYYY-MM-DD format
+  serviceDateISO: string; // YYYY-MM-DD, origin local date when possible
+  originIata?: string;
+  destIata?: string;
 };
 
 // Enhanced flight with latest status

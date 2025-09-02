@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useFlights, useRefreshAllFlights, useDeleteFlight } from "@/hooks/useFlights";
 import { getStatusColor, getStatusLabel, FlightStatusCode } from "@/lib/types";
+import { displayFlightIata } from "@/lib/airlineCodes";
 
 export default function BoardPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -301,7 +302,7 @@ export default function BoardPage() {
                               {/* Flight Info */}
                               <div className="text-center">
                                 <div className="text-lg font-bold text-slate-900">
-                                  {flight.carrierIata}{flight.flightNumber}
+                                  {displayFlightIata(flight.carrierIata, flight.flightNumber)}
                                 </div>
                                 <div className="text-sm text-slate-500">
                                   {flight.notes || "—"}
