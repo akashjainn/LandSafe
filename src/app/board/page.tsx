@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
-import { iataToIana } from "@/lib/airports";
+import { iataToIana, formatAirport } from "@/lib/airports";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import { useFlights, useRefreshAllFlights, useDeleteFlight } from "@/hooks/useFlights";
-import { getStatusColor, getStatusLabel, FlightStatusCode } from "@/lib/types";
+import { getStatusColor, getStatusLabel, FlightStatusCode, Flight } from "@/lib/types";
 import { displayFlightIata } from "@/lib/airlineCodes";
 
 export default function BoardPage() {
@@ -72,11 +72,35 @@ export default function BoardPage() {
     }
   };
 
-  const getStatusBadge = (status?: FlightStatusCode) => {
+  const formatDeltaLabel = (mins: number | null): string | null => {
+    if (mins === null) return null;
+    if (mins === 0) return "On time";
+    if (mins < 0) return `${Math.abs(mins)} min early`;
+    return `${mins} min late`;
+  };
+
+  const computeDelayMinutes = (sched?: Date | string | null, est?: Date | string | null, act?: Date | string | null): number | null => {
+    const toDate = (d?: Date | string | null) => (typeof d === 'string' ? new Date(d) : d) as Date | undefined;
+    const s = toDate(sched);
+    const e = toDate(est);
+    const a = toDate(act);
+    const ref = a || e;
+    if (!s || !ref) return null;
+    return Math.round((ref.getTime() - s.getTime()) / 60000);
+  };
+
+  const getStatusBadge = (flight: Flight) => {
+    const status = flight.latestStatus;
     if (!status) return null;
-    
+
     const color = getStatusColor(status);
-    const label = getStatusLabel(status);
+    // Prefer arrival deltas if available, else departure
+    const arrDelta = computeDelayMinutes(flight.latestSchedArr, flight.latestEstArr, null);
+    const depDelta = computeDelayMinutes(flight.latestSchedDep, flight.latestEstDep, null);
+    const delta = arrDelta !== null ? arrDelta : depDelta;
+    const derived = formatDeltaLabel(delta);
+    const base = getStatusLabel(status);
+    const label = derived ?? base;
     
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
       blue: "default",
@@ -89,9 +113,9 @@ export default function BoardPage() {
       gray: "outline"
     };
 
-    return (
+  return (
       <Badge variant={variants[color] || "outline"} className={`bg-${color}-50 text-${color}-700 border-${color}-200`}>
-        {label}
+    {label}
       </Badge>
     );
   };
@@ -313,7 +337,7 @@ export default function BoardPage() {
                               <div className="flex items-center gap-4">
                                 <div className="text-center">
                                   <div className="text-2xl font-bold text-slate-700">
-                                    {flight.originIata || "—"}
+                                    {formatAirport(flight.originIata)}
                                   </div>
                                   <div className="text-xs text-slate-500 mt-1">
                                     {formatDateTime(flight.latestSchedDep || flight.latestEstDep, iataToIana(flight.originIata))}
@@ -328,7 +352,7 @@ export default function BoardPage() {
                                 
                                 <div className="text-center">
                                   <div className="text-2xl font-bold text-slate-700">
-                                    {flight.destIata || "—"}
+                                    {formatAirport(flight.destIata)}
                                   </div>
                                   <div className="text-xs text-slate-500 mt-1">
                                     {formatDateTime(flight.latestSchedArr || flight.latestEstArr, iataToIana(flight.destIata))}
@@ -351,7 +375,7 @@ export default function BoardPage() {
 
                             <div className="flex items-center gap-3">
                               {/* Status */}
-                              {getStatusBadge(flight.latestStatus)}
+                              {getStatusBadge(flight)}
                               
                               {/* Actions */}
                               <Button

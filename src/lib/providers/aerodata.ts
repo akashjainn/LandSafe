@@ -1,6 +1,7 @@
 import { FlightProvider, FlightProviderError } from "./flightProvider";
 import { FlightStatusDTO, FlightQuery, FlightStatusCode } from "../types";
 import { normalizeAirlineCode } from "../airlineCodes";
+import { iataToIana } from "../airports";
 
 export class AeroDataProvider implements FlightProvider {
   private apiMarketKey: string;
@@ -102,16 +103,36 @@ export class AeroDataProvider implements FlightProvider {
   // Use a more specific type for AeroDataBox API response
   private mapAeroDataResponse(data: AeroDataBoxFlight): FlightStatusDTO {
     const flight = data;
+    const depIata = flight.departure?.airport?.iata || flight.departure?.iata;
+    const arrIata = flight.arrival?.airport?.iata || flight.arrival?.iata;
 
     // AeroDataBox uses *TimeUtc/*TimeLocal fields
-  const depSched = flight.departure?.scheduledTimeUtc || flight.departure?.scheduled || flight.departure?.scheduledTime?.utc;
-  const arrSched = flight.arrival?.scheduledTimeUtc || flight.arrival?.scheduled || flight.arrival?.scheduledTime?.utc;
-  const depEst = flight.departure?.estimatedTimeUtc || flight.departure?.estimated || flight.departure?.estimatedTime?.utc;
-  const arrEst = flight.arrival?.estimatedTimeUtc || flight.arrival?.estimated || flight.arrival?.estimatedTime?.utc;
-  const depAct = flight.departure?.actualTimeUtc || flight.departure?.actual || flight.departure?.actualTime?.utc;
-  const arrAct = flight.arrival?.actualTimeUtc || flight.arrival?.actual || flight.arrival?.actualTime?.utc;
+    const depSched = flight.departure?.scheduledTimeUtc
+      || this.toUtcIso(flight.departure?.scheduledTimeLocal, depIata)
+      || flight.departure?.scheduled
+      || flight.departure?.scheduledTime?.utc;
+    const arrSched = flight.arrival?.scheduledTimeUtc
+      || this.toUtcIso(flight.arrival?.scheduledTimeLocal, arrIata)
+      || flight.arrival?.scheduled
+      || flight.arrival?.scheduledTime?.utc;
+    const depEst = flight.departure?.estimatedTimeUtc
+      || this.toUtcIso(flight.departure?.estimatedTimeLocal, depIata)
+      || flight.departure?.estimated
+      || flight.departure?.estimatedTime?.utc;
+    const arrEst = flight.arrival?.estimatedTimeUtc
+      || this.toUtcIso(flight.arrival?.estimatedTimeLocal, arrIata)
+      || flight.arrival?.estimated
+      || flight.arrival?.estimatedTime?.utc;
+    const depAct = flight.departure?.actualTimeUtc
+      || this.toUtcIso(flight.departure?.actualTimeLocal, depIata)
+      || flight.departure?.actual
+      || flight.departure?.actualTime?.utc;
+    const arrAct = flight.arrival?.actualTimeUtc
+      || this.toUtcIso(flight.arrival?.actualTimeLocal, arrIata)
+      || flight.arrival?.actual
+      || flight.arrival?.actualTime?.utc;
 
-    return {
+    const mapped: FlightStatusDTO = {
       schedDep: depSched,
       schedArr: arrSched,
       estDep: depEst,
@@ -124,26 +145,76 @@ export class AeroDataProvider implements FlightProvider {
       terminalArr: flight.arrival?.terminal,
       status: this.mapStatus(flight.status ?? ""),
       aircraftType: flight.aircraft?.model,
-      originIata: flight.departure?.airport?.iata || flight.departure?.iata,
-      destIata: flight.arrival?.airport?.iata || flight.arrival?.iata,
+      originIata: depIata,
+      destIata: arrIata,
       delayReason: flight.departure?.delay?.reasonCode,
     };
+
+    // Fallback: derive status if provider string didn't map
+    if (!mapped.status || mapped.status === FlightStatusCode.UNKNOWN) {
+      if (mapped.actArr) mapped.status = FlightStatusCode.LANDED;
+      else if (mapped.actDep && (mapped.estArr || mapped.schedArr)) mapped.status = FlightStatusCode.ENROUTE;
+      else if (mapped.estDep || mapped.schedDep) mapped.status = FlightStatusCode.SCHEDULED;
+    }
+
+    return mapped;
   }
 
   private mapStatus(apiStatus: string): FlightStatusCode {
     // Map AeroDataBox status to our enum
+    const key = (apiStatus || "").trim();
     const statusMap: Record<string, FlightStatusCode> = {
       "Scheduled": FlightStatusCode.SCHEDULED,
+      "On time": FlightStatusCode.SCHEDULED,
       "Active": FlightStatusCode.ENROUTE,
+      "En Route": FlightStatusCode.ENROUTE,
+      "Departed": FlightStatusCode.DEPARTED,
+      "Arrived": FlightStatusCode.LANDED,
       "Landed": FlightStatusCode.LANDED,
+      "Delayed": FlightStatusCode.DELAYED,
+      "Boarding": FlightStatusCode.BOARDING,
       "Cancelled": FlightStatusCode.CANCELLED,
       "Diverted": FlightStatusCode.DIVERTED,
     };
 
-    return statusMap[apiStatus] || FlightStatusCode.UNKNOWN;
+    return statusMap[key] || FlightStatusCode.UNKNOWN;
   }
 
   // no synthetic fallback
+
+  private toUtcIso(local?: string, iata?: string): string | undefined {
+    if (!local || !iata) return undefined;
+    const tz = iataToIana(iata);
+    if (!tz) return undefined;
+    try {
+      // Normalize to ISO-like string for parsing
+      let s = local.replace(' ', 'T');
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s)) s += ':00';
+      // Build a UTC date from local time in the given timezone using Intl
+      const parts = s.split(/[T:.-]/).map(Number);
+      const [y, m, d, hh, mm, ss = 0] = parts;
+  // Compute the timezone offset at that local time by formatting and parsing the GMT offset
+      const fmt = new Intl.DateTimeFormat('en-US', {
+        timeZone: tz,
+        timeZoneName: 'shortOffset',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+      });
+      // Format a Date constructed from the local wall time
+      const wall = new Date(y, (m - 1), d, hh, mm, ss);
+      const offsetMatch = fmt.formatToParts(wall).find(p => p.type === 'timeZoneName')?.value || 'GMT+00:00';
+      const sign = /-/i.test(offsetMatch) ? -1 : 1;
+      const om = offsetMatch.match(/GMT([+-])(\d{2}):(\d{2})/);
+      const oh = om ? Number(om[2]) : 0;
+      const oi = om ? Number(om[3]) : 0;
+      const offsetMs = sign * (oh * 60 + oi) * 60 * 1000;
+      // Convert local wall time to UTC by subtracting offset
+      const utcMs = wall.getTime() - offsetMs;
+      return new Date(utcMs).toISOString();
+    } catch {
+      return undefined;
+    }
+  }
 }
 
 // Minimal type for AeroDataBox flight objects used here
