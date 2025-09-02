@@ -5,21 +5,52 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { EmptyFlights } from "@/components/empty-state";
 import { useFlights } from "@/hooks/useFlights";
 import { Plane, Clock, TrendingUp, Eye, Plus } from "lucide-react";
+import { iataToIana } from "@/lib/airports";
+import { displayFlightIata } from "@/lib/airlineCodes";
+import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 
 export default function DashboardPage() {
   const { data: flights = [], isLoading } = useFlights();
 
-  // Calculate KPIs
-  const totalFlights = flights.length;
-  const onTimeFlights = flights.filter(f => 
-    f.latestStatus?.toLowerCase().includes('on') || 
-    f.latestStatus?.toLowerCase().includes('time')
-  ).length;
-  const onTimePercentage = totalFlights > 0 ? Math.round((onTimeFlights / totalFlights) * 100) : 0;
+  // Helpers for delay and formatting
+  const toDate = (d?: Date | string | null) => (typeof d === 'string' ? new Date(d) : d) as Date | undefined;
+  const computeDelayMinutes = (sched?: Date | string | null, est?: Date | string | null, act?: Date | string | null): number | null => {
+    const s = toDate(sched);
+    const e = toDate(est);
+    const a = toDate(act);
+    const ref = a || e;
+    if (!s || !ref) return null;
+    return Math.round((ref.getTime() - s.getTime()) / 60000);
+  };
+  const fmtLocal = (date?: Date | string | null, tz?: string) => {
+    if (!date) return "—";
+    try {
+      const d = typeof date === 'string' ? new Date(date) : date;
+      return tz ? formatInTimeZone(d, tz, "EEE, MMM d, h:mm a") : format(d, "EEE, MMM d, h:mm a");
+    } catch {
+      return "—";
+    }
+  };
 
-  // Recent activity (last 10 flights sorted by creation time)
-  const recentFlights = flights
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  // Calculate KPIs based on delays
+  const totalFlights = flights.length;
+  const delays = flights.map(f => {
+    const arrDelta = computeDelayMinutes(f.latestSchedArr, f.latestEstArr, null);
+    const depDelta = computeDelayMinutes(f.latestSchedDep, f.latestEstDep, null);
+    return arrDelta !== null ? arrDelta : depDelta;
+  }).filter((v): v is number => v !== null);
+  const onTimeFlights = delays.filter(min => min <= 0).length;
+  const onTimePercentage = totalFlights > 0 ? Math.round((onTimeFlights / totalFlights) * 100) : 0;
+  const avgDelay = delays.length > 0 ? Math.round(delays.reduce((a, b) => a + Math.max(0, b), 0) / delays.length) : null;
+
+  // Show flights sorted by upcoming departure (est or sched), not by createdAt
+  const recentFlights = [...flights]
+    .sort((a, b) => {
+      const aTime = toDate(a.latestEstDep) || toDate(a.latestSchedDep) || new Date(0);
+      const bTime = toDate(b.latestEstDep) || toDate(b.latestSchedDep) || new Date(0);
+      return aTime.getTime() - bTime.getTime();
+    })
     .slice(0, 10);
 
   if (isLoading) {
@@ -50,9 +81,11 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
           <p className="text-slate-600">Overview of your tracked flights</p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Flight
+        <Button asChild>
+          <a href="/upload">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Flight
+          </a>
         </Button>
       </div>
 
@@ -90,7 +123,7 @@ export default function DashboardPage() {
             <Clock className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">—</div>
+            <div className="text-2xl font-bold">{avgDelay !== null ? `${avgDelay}m` : '—'}</div>
             <p className="text-xs text-slate-600">
               Minutes behind schedule
             </p>
@@ -125,21 +158,24 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentFlights.map((flight) => (
-                  <div key={flight.id} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
-                    <div>
-                      <div className="font-medium text-sm">{flight.flightNumber}</div>
-                      <div className="text-xs text-slate-600">
-                        {flight.originIata} → {flight.destIata}
+                {recentFlights.map((flight) => {
+                  const depTz = iataToIana(flight.originIata);
+                  const arrTz = iataToIana(flight.destIata);
+                  return (
+                    <div key={flight.id} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+                      <div>
+                        <div className="font-medium text-sm">{displayFlightIata(flight.carrierIata, flight.flightNumber)}</div>
+                        <div className="text-xs text-slate-600">
+                          {flight.originIata} → {flight.destIata}
+                        </div>
+                      </div>
+                      <div className="text-right text-xs text-slate-600">
+                        <div>Dep: {fmtLocal(flight.latestSchedDep || flight.latestEstDep, depTz)}</div>
+                        <div>Arr: {fmtLocal(flight.latestSchedArr || flight.latestEstArr, arrTz)}</div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-xs text-slate-500">
-                        {new Date(flight.createdAt).toLocaleTimeString()}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -157,8 +193,8 @@ export default function DashboardPage() {
                   Add flights to start monitoring their status in real-time.
                 </p>
                 <div className="flex gap-2">
-                  <Button>Add Flight</Button>
-                  <Button variant="outline">Import CSV</Button>
+                  <Button asChild><a href="/upload">Add Flight</a></Button>
+                  <Button asChild variant="outline"><a href="/upload">Import CSV</a></Button>
                 </div>
               </div>
             </CardContent>
