@@ -23,8 +23,9 @@ export function normalizeAirlineCode(input: string) {
 }
 
 export function displayFlightIata(airlineIata: string, flightNumber: string) {
+  const code = normalizeAirlineCode(airlineIata);
   const num = String(flightNumber).replace(/\D/g, "");
-  return `${airlineIata}${num.padStart(4, "0")}`;
+  return `${code}${num.padStart(4, "0")}`;
 }
 
 export function safeGate(g?: string) {
