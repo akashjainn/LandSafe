@@ -1,18 +1,29 @@
 const ICAO_TO_IATA: Record<string, string> = {
-  SWA: "WN",
-  DAL: "DL",
-  AAL: "AA",
-  UAL: "UA",
-  ASA: "AS",
-  JBU: "B6",
-  NKS: "NK",
-  FFT: "F9",
-  BAW: "BA",
-  AFR: "AF",
-  DLH: "LH",
-  UAE: "EK",
-  SIA: "SQ",
-  ACA: "AC",
+  // North America
+  SWA: "WN", UAL: "UA", AAL: "AA", DAL: "DL", ASA: "AS", JBU: "B6", NKS: "NK", FFT: "F9",
+  WJA: "WS", ACA: "AC",
+
+  // Europe
+  BAW: "BA", AFR: "AF", DLH: "LH", RYR: "FR", SWR: "LX", SAS: "SK", VIR: "VS", VLG: "VY", AUA: "OS",
+
+  // Middle East
+  UAE: "EK", ETD: "EY", THY: "TK", QTR: "QR",
+
+  // Asia
+  JAL: "JL", KAL: "KE", KLM: "KL", SIA: "SQ", CPA: "CX", CCA: "CA", CSN: "CZ", CES: "MU", EVA: "BR",
+  ITY: "AZ",
+
+  // Oceania
+  ANZ: "NZ",
+
+  // Latin America
+  GLO: "G3", AVA: "AV", LPE: "LA", LAN: "LA",
+
+  // Africa
+  ETH: "ET",
+
+  // Others
+  EIN: "EI", IBE: "IB", PAL: "PR", THT: "TN", AEA: "UX", EZY: "U2", WZZ: "W6", IGO: "6E", VTI: "UK", HVN: "VN", SVA: "SV",
 };
 
 export function normalizeAirlineCode(input: string) {

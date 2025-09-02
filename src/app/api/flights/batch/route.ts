@@ -4,6 +4,7 @@ import { parseCarrierFlightNumber } from "@/lib/types";
 import { AeroDataProvider } from "@/lib/providers/aerodata";
 import { statusFromDTO } from "@/lib/mappers";
 import { normalizeAirlineCode } from "@/lib/airlineCodes";
+import { normalizeFlight } from "@/lib/flightNormalize";
 
 const prisma = getPrisma();
 const flightProvider = new AeroDataProvider();
@@ -33,24 +34,27 @@ export async function POST(request: NextRequest) {
 
         const inputCombined = combined || (!number && carrier ? carrier : undefined);
         if ((!derivedNumber || !derivedCarrier) && inputCombined) {
-          const parsed = parseCarrierFlightNumber(inputCombined);
+          // Prefer broad normalizer (callsigns, ICAO, IATA, spaces/dashes)
+          const broad = normalizeFlight(inputCombined);
+          const parsed = broad || parseCarrierFlightNumber(inputCombined);
           if (parsed) {
             derivedCarrier = parsed.carrierIata;
             derivedNumber = parsed.flightNumber;
           } else {
-            // Try regex parse (including 3-letter aliases)
+            // Try regex parse (including 3-letter ICAO -> normalize to IATA)
             const trimmed = inputCombined.trim().toUpperCase();
             const m = trimmed.match(/^([A-Z]{2,3})\s*(\d{1,4})$/);
             if (m) {
-              const alias: Record<string, string> = {
-                SWA: 'WN', DAL: 'DL', UAL: 'UA', AAL: 'AA', ASA: 'AS', JBU: 'B6', NKS: 'NK', FFT: 'F9',
-                BAW: 'BA', AFR: 'AF', DLH: 'LH', UAE: 'EK', SIA: 'SQ', ACA: 'AC'
-              };
               const prefix = m[1];
-              derivedCarrier = alias[prefix] || prefix.slice(0, 2);
+              derivedCarrier = normalizeAirlineCode(prefix);
               derivedNumber = m[2];
             }
           }
+        }
+
+        // Ensure any derived/provided carrier is normalized to IATA (handles ICAO like UAE->EK)
+        if (derivedCarrier) {
+          derivedCarrier = normalizeAirlineCode(derivedCarrier);
         }
 
         // Validate minimal required fields

@@ -4,6 +4,7 @@ import { AeroDataProvider } from "@/lib/providers/aerodata";
 import { statusFromDTO } from "@/lib/mappers";
 import { iataToIana } from "@/lib/airports";
 import { normalizeAirlineCode } from "@/lib/airlineCodes";
+import { normalizeFlight } from "@/lib/flightNormalize";
 import { formatInTimeZone } from "date-fns-tz";
 
 const prisma = getPrisma();
@@ -107,20 +108,20 @@ export async function POST(request: NextRequest) {
     schedDepLocal?: string; schedArrLocal?: string; schedDepLocalDate?: string; schedArrLocalDate?: string;
   };
 
-    // If carrierIata is missing, try to parse from flightNumber input like "DL295" or "SWA300"
+    // If carrierIata is missing, try to parse from freeform input like "DL295", "SWA 300", "UAE0313", "Speedbird 287"
     let derivedCarrier = carrierIata;
     let derivedNumber = flightNumber;
-    if (!derivedCarrier && /^[A-Za-z]{2,3}\s*\d{1,4}$/.test((derivedNumber || '').trim())) {
-      const m = derivedNumber.trim().toUpperCase().match(/^([A-Z]{2,3})\s*(\d{1,4})$/);
-      if (m) {
-        const alias: Record<string, string> = {
-          SWA: 'WN', DAL: 'DL', UAL: 'UA', AAL: 'AA', ASA: 'AS', JBU: 'B6', NKS: 'NK', FFT: 'F9',
-          BAW: 'BA', AFR: 'AF', DLH: 'LH', UAE: 'EK', SIA: 'SQ', ACA: 'AC'
-        };
-        const prefix = m[1];
-        const mapped = alias[prefix];
-        derivedCarrier = mapped || prefix.slice(0, 2);
-        derivedNumber = m[2];
+    if (!derivedCarrier) {
+      const norm = normalizeFlight(derivedNumber || "");
+      if (norm) {
+        derivedCarrier = norm.carrierIata;
+        derivedNumber = norm.flightNumber;
+      } else if (/^[A-Za-z]{2,3}\s*\d{1,4}$/.test((derivedNumber || '').trim())) {
+        const m = (derivedNumber || '').trim().toUpperCase().match(/^([A-Z]{2,3})\s*(\d{1,4})$/);
+        if (m) {
+          derivedCarrier = normalizeAirlineCode(m[1]);
+          derivedNumber = m[2];
+        }
       }
     }
 

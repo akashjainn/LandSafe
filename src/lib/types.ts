@@ -98,12 +98,15 @@ export type BulkRefreshResult = {
 };
 
 // Helper functions for parsing carrier/flight strings
+import { normalizeAirlineCode } from "./airlineCodes";
+
 export function parseFlightString(flightStr: string): { carrier: string; number: string } | null {
-  const match = flightStr.match(/^([A-Z]{2})(\d{1,4})$/);
+  // Accept 2-3 letter airline prefixes (IATA or ICAO), normalize to IATA
+  const match = flightStr.trim().toUpperCase().match(/^([A-Z]{2,3})(\d{1,4})$/);
   if (!match) return null;
-  
+
   return {
-    carrier: match[1],
+    carrier: normalizeAirlineCode(match[1]),
     number: match[2]
   };
 }
@@ -113,18 +116,17 @@ export function formatFlightNumber(carrier: string, number: string): string {
 }
 
 export function parseCarrierFlightNumber(input: string): { carrierIata: string; flightNumber: string } | null {
-  // Handle formats like "DL123", "DL 123", "Delta 123"
+  // Handle formats like "DL123", "DL 123", "DAL123", "UAE0313"
   const patterns = [
-    /^([A-Z]{2})(\d{1,4})$/, // DL123
-    /^([A-Z]{2})\s+(\d{1,4})$/, // DL 123
-    /^([A-Z]{2,3})\s*(\d{1,4})$/, // DL123 or DAL123
+    /^([A-Z]{2,3})(\d{1,4})$/,     // DL123 or DAL123
+    /^([A-Z]{2,3})\s+(\d{1,4})$/, // DL 123 or DAL 123
   ];
 
   for (const pattern of patterns) {
     const match = input.trim().toUpperCase().match(pattern);
     if (match) {
       return {
-        carrierIata: match[1].substring(0, 2), // Take first 2 chars for IATA
+        carrierIata: normalizeAirlineCode(match[1]), // Map ICAO->IATA when needed
         flightNumber: match[2]
       };
     }
