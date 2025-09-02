@@ -11,7 +11,6 @@ import {
   Menu, 
   Search, 
   Sun, 
-  Moon, 
   Settings, 
   User, 
   BarChart3, 

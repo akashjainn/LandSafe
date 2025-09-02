@@ -6,6 +6,7 @@ import { iataToIana } from "@/lib/airports";
 import { normalizeAirlineCode } from "@/lib/airlineCodes";
 import { normalizeFlight } from "@/lib/flightNormalize";
 import { formatInTimeZone } from "date-fns-tz";
+import type { Prisma } from "@prisma/client";
 
 const prisma = getPrisma();
 const flightProvider = new AeroDataProvider();
@@ -248,7 +249,7 @@ export async function POST(request: NextRequest) {
   // The provider accepts FlightQuery; we pass an extended shape which it reads optionally.
   const statusData = await flightProvider.getStatus(providerQuery as unknown as { carrierIata: string; flightNumber: string; serviceDateISO: string });
 
-      if (statusData) {
+  if (statusData) {
         const snapshot = await prisma.flightStatusSnapshot.create({
           data: {
             flightId: flight.id,
@@ -273,20 +274,45 @@ export async function POST(request: NextRequest) {
         });
 
         // Update denormalized fields
-        flight = await prisma.flight.update({
-          where: { id: flight.id },
-          data: {
-            latestSchedDep: snapshot.schedDep,
-            latestSchedArr: snapshot.schedArr,
-            latestEstDep: snapshot.estDep,
-            latestEstArr: snapshot.estArr,
-            latestGateDep: snapshot.gateDep,
-            latestGateArr: snapshot.gateArr,
-            latestStatus: snapshot.status,
-            originIata: statusData.originIata || flight.originIata,
-            destIata: statusData.destIata || flight.destIata,
-          },
-        });
+        // Determine origin-local service date from provider data; if differs, correct the record
+        const originForTz = statusData.originIata || originFinal || flight.originIata || undefined;
+        let correctedServiceDate: Date | undefined;
+        try {
+          const baseTime = snapshot.schedDep || snapshot.estDep || snapshot.actDep;
+          if (originForTz && baseTime) {
+            const tz = iataToIana(originForTz);
+            if (tz) {
+              const localIso = formatInTimeZone(baseTime, tz, 'yyyy-MM-dd');
+              correctedServiceDate = new Date(`${localIso}T00:00:00Z`);
+            }
+          }
+        } catch {}
+
+  const updateData = {
+          latestSchedDep: snapshot.schedDep,
+          latestSchedArr: snapshot.schedArr,
+          latestEstDep: snapshot.estDep,
+          latestEstArr: snapshot.estArr,
+          latestGateDep: snapshot.gateDep,
+          latestGateArr: snapshot.gateArr,
+          latestTerminalDep: snapshot.terminalDep,
+          latestTerminalArr: snapshot.terminalArr,
+          latestStatus: snapshot.status,
+          originIata: statusData.originIata || flight.originIata || undefined,
+          destIata: statusData.destIata || flight.destIata || undefined,
+        };
+        const finalUpdate: Prisma.FlightUpdateInput = (() => {
+          if (correctedServiceDate) {
+            const currentIso = flight.serviceDate.toISOString().split('T')[0];
+            const correctedIso = correctedServiceDate.toISOString().split('T')[0];
+            if (currentIso !== correctedIso) {
+              return { ...updateData, serviceDate: correctedServiceDate } as Prisma.FlightUpdateInput;
+            }
+          }
+          return updateData as Prisma.FlightUpdateInput;
+        })();
+
+        flight = await prisma.flight.update({ where: { id: flight.id }, data: finalUpdate });
       }
     } catch (e) {
       // Don't fail the request if provider refresh fails

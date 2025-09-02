@@ -26,7 +26,8 @@ export class AeroDataProvider implements FlightProvider {
       
       // Prefer API.Market if configured, else fallback to RapidAPI
       const isApiMarket = !!this.apiMarketKey;
-      const url = `${isApiMarket ? this.apiMarketBase : this.rapidBase}/number/${flightId}/${serviceDateISO}`;
+  const baseUrl = `${isApiMarket ? this.apiMarketBase : this.rapidBase}/number/${flightId}`;
+  const url = `${baseUrl}/${serviceDateISO}`;
 
       const headers = isApiMarket
         ? {
@@ -76,18 +77,18 @@ export class AeroDataProvider implements FlightProvider {
           })
         : [];
 
-      const pool = candidates.length ? candidates : (codeShareFallback.length ? codeShareFallback : list);
+  const pool = candidates.length ? candidates : (codeShareFallback.length ? codeShareFallback : list);
 
       const best = pool
         .sort((a, b) => new Date(this.pickUtcTime(a?.departure)).getTime() - new Date(this.pickUtcTime(b?.departure)).getTime())[0];
 
       if (!best) {
-        // Fallback attempt: try a likely operating carrier alias (e.g., SK -> NK)
+        // Fallback attempt 1: try a likely operating carrier alias (e.g., SK -> NK)
         const fallbackCarrierMap: Record<string, string> = { SK: 'NK' };
         const alt = fallbackCarrierMap[carrier];
         if (alt) {
           const altFlightId = `${alt}${query.flightNumber}`;
-          const altUrl = `${isApiMarket ? this.apiMarketBase : this.rapidBase}/number/${altFlightId}/${serviceDateISO}`;
+          const altUrl = `${baseUrl.replace(carrier + query.flightNumber, altFlightId)}/${serviceDateISO}`;
           const altResp = await fetch(altUrl, { headers });
           if (altResp.ok) {
             const altData: AeroDataBoxFlight | AeroDataBoxFlight[] = await altResp.json();
@@ -105,6 +106,36 @@ export class AeroDataProvider implements FlightProvider {
               .sort((a, b) => new Date(this.pickUtcTime(a?.departure)).getTime() - new Date(this.pickUtcTime(b?.departure)).getTime())[0];
             if (altBest) return this.mapAeroDataResponse(altBest);
           }
+        }
+        // Fallback attempt 2: try adjacent dates to handle TZ boundaries (prev/next day)
+        const shiftDate = (iso: string, deltaDays: number) => {
+          const d = new Date(`${iso}T00:00:00Z`);
+          d.setUTCDate(d.getUTCDate() + deltaDays);
+          return d.toISOString().split('T')[0];
+        };
+        const adjDates = [shiftDate(serviceDateISO, -1), shiftDate(serviceDateISO, 1)];
+        for (const adj of adjDates) {
+          const adjUrl = `${baseUrl}/${adj}`;
+          const adjResp = await fetch(adjUrl, { headers });
+          if (!adjResp.ok) continue;
+          const adjData: AeroDataBoxFlight | AeroDataBoxFlight[] = await adjResp.json();
+          const adjList: AeroDataBoxFlight[] = Array.isArray(adjData) ? adjData : [adjData];
+          const adjCandidates = adjList.filter((r) => {
+            const airlineMatches = r?.airline?.iata?.toUpperCase() === carrier;
+            const origMatches = !orig || r?.departure?.airport?.iata?.toUpperCase() === orig || r?.departure?.iata?.toUpperCase() === orig;
+            const destMatches = !dest || r?.arrival?.airport?.iata?.toUpperCase() === dest || r?.arrival?.iata?.toUpperCase() === dest;
+            const numberMatches = (r?.flight?.number || "").replace(/\D/g, "") === query.flightNumber.replace(/\D/g, "");
+            return airlineMatches && origMatches && destMatches && numberMatches;
+          });
+          const adjPool = adjCandidates.length ? adjCandidates : adjList.filter((r) => {
+            const origMatches = !orig || r?.departure?.airport?.iata?.toUpperCase() === orig || r?.departure?.iata?.toUpperCase() === orig;
+            const destMatches = !dest || r?.arrival?.airport?.iata?.toUpperCase() === dest || r?.arrival?.iata?.toUpperCase() === dest;
+            const numberMatches = (r?.flight?.number || "").replace(/\D/g, "") === query.flightNumber.replace(/\D/g, "");
+            return origMatches && destMatches && numberMatches;
+          });
+          const adjBest = (adjPool.length ? adjPool : adjList)
+            .sort((a, b) => new Date(this.pickUtcTime(a?.departure)).getTime() - new Date(this.pickUtcTime(b?.departure)).getTime())[0];
+          if (adjBest) return this.mapAeroDataResponse(adjBest);
         }
         return null;
       }

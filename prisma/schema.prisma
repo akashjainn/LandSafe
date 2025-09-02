@@ -30,6 +30,8 @@ model Flight {
   latestEstArr   DateTime?
   latestGateDep  String?
   latestGateArr  String?
+  latestTerminalDep String?
+  latestTerminalArr String?
   latestStatus   FlightStatusCode? @default(SCHEDULED)
 
   statuses       FlightStatusSnapshot[]

@@ -28,6 +28,8 @@ export type Flight = {
   latestEstArr?: Date | null;
   latestGateDep?: string;
   latestGateArr?: string;
+  latestTerminalDep?: string | null;
+  latestTerminalArr?: string | null;
   latestStatus?: FlightStatusCode;
 };
 

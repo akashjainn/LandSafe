@@ -376,15 +376,21 @@ export default function BoardPage() {
                                 </div>
                               </div>
 
-                              {/* Gates */}
-                              {(flight.latestGateDep || flight.latestGateArr) && (
-                                <div className="flex items-center gap-2 text-sm text-slate-600">
+                              {/* Terminals & Gates */}
+                              {(flight.latestGateDep || flight.latestGateArr || flight.latestTerminalDep || flight.latestTerminalArr) && (
+                                <div className="flex items-center gap-3 text-sm text-slate-600">
                                   <MapPin className="h-4 w-4" />
-                                  <span>
-                                    {flight.latestGateDep && `Gate ${flight.latestGateDep}`}
-                                    {flight.latestGateDep && flight.latestGateArr && " → "}
-                                    {flight.latestGateArr && `Gate ${flight.latestGateArr}`}
-                                  </span>
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                                    <span>
+                                      {`Dep: ${flight.latestTerminalDep ? `T${flight.latestTerminalDep}` : '—'}`}
+                                      {flight.latestGateDep ? ` · Gate ${flight.latestGateDep}` : ''}
+                                    </span>
+                                    <span className="hidden sm:inline">|</span>
+                                    <span>
+                                      {`Arr: ${flight.latestTerminalArr ? `T${flight.latestTerminalArr}` : '—'}`}
+                                      {flight.latestGateArr ? ` · Gate ${flight.latestGateArr}` : ''}
+                                    </span>
+                                  </div>
                                 </div>
                               )}
                             </div>
