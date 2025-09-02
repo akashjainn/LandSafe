@@ -24,6 +24,7 @@ export const IATA_TZ: Record<string, string> = {
   CDG: "Europe/Paris",
   FRA: "Europe/Berlin",
   MCO: "America/New_York",
+  FLL: "America/New_York",
 };
 
 export const IATA_CITY_COUNTRY: Record<string, string> = {
@@ -52,6 +53,7 @@ export const IATA_CITY_COUNTRY: Record<string, string> = {
   CDG: "Paris, France",
   FRA: "Frankfurt, Germany",
   MCO: "Orlando, USA",
+  FLL: "Fort Lauderdale, Florida",
 };
 
 export function iataToIana(iata?: string | null): string | undefined {
