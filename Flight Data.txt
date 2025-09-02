@@ -1,0 +1,19 @@
+Flight Data:
+DL0295
+Departure (ATL): Dec 29, 10:00 AM
+Arrival (HND): Dec 30, 2:35 PM
+Status: On time
+
+SWA300
+Departure (ATL): 9/1 Scheduled: 6:10 PM, Actual: 6:40 PM
+Arrival (AUS): 9/1 Scheduled: 7:35 PM Actual: 8:05 PM
+Status: Arriving Late
+
+DL0120
+Departure(HND): Jan 6, 5:20 PM
+Layover (MSP): 2h 50m
+Arrival (ATL): Jan 6, 8:04 PM
+Status: On time
+
+
+$2337.59

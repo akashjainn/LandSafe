@@ -34,3 +34,15 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Environment variables
+
+Set one of the following keys to enable AeroDataBox:
+
+- API_MARKET_KEY (preferred) for API.Market access
+- AERODATABOX_API_KEY or AERODATA_API_KEY (RapidAPI) as a fallback
+
+When API_MARKET_KEY is set, calls go to:
+https://prod.api.market/api/v1/aedbx/aerodatabox
+
+With header: x-api-market-key: YOUR_KEY

@@ -3,33 +3,41 @@ import { FlightStatusDTO, FlightQuery, FlightStatusCode } from "../types";
 import { normalizeAirlineCode } from "../airlineCodes";
 
 export class AeroDataProvider implements FlightProvider {
-  private apiKey: string;
-  private baseUrl = "https://aerodatabox.p.rapidapi.com/flights";
+  private apiMarketKey: string;
+  private rapidKey: string;
+  private apiMarketBase = "https://prod.api.market/api/v1/aedbx/aerodatabox/flights";
+  private rapidBase = "https://aerodatabox.p.rapidapi.com/flights";
 
   constructor(apiKey?: string) {
-  this.apiKey = apiKey || process.env.AERODATA_API_KEY || process.env.AERODATABOX_API_KEY || "";
+  // apiKey param used as RapidAPI key fallback; API.Market uses its own env
+  this.apiMarketKey = process.env.API_MARKET_KEY || "";
+  this.rapidKey = apiKey || process.env.AERODATA_API_KEY || process.env.AERODATABOX_API_KEY || "";
   }
 
   async getStatus(query: FlightQuery): Promise<FlightStatusDTO | null> {
-    // If no API key, don't fabricate data
-    if (!this.apiKey || this.apiKey === "your_aerodata_api_key_here") {
-      return null;
-    }
+  // If no API key for either provider, don't fabricate data
+  if (!this.apiMarketKey && (!this.rapidKey || this.rapidKey === "your_aerodata_api_key_here")) return null;
 
     try {
   const carrier = normalizeAirlineCode(query.carrierIata);
   const flightId = `${carrier}${query.flightNumber}`;
   const serviceDateISO = query.serviceDateISO; // should be origin-local date
       
-      // AeroDataBox API endpoint format
-      const url = `${this.baseUrl}/number/${flightId}/${serviceDateISO}`;
-      
-  const response = await fetch(url, {
-        headers: {
-          "X-RapidAPI-Key": this.apiKey,
-          "X-RapidAPI-Host": "aerodatabox.p.rapidapi.com",
-        },
-      });
+      // Prefer API.Market if configured, else fallback to RapidAPI
+      const isApiMarket = !!this.apiMarketKey;
+      const url = `${isApiMarket ? this.apiMarketBase : this.rapidBase}/number/${flightId}/${serviceDateISO}`;
+
+      const headers = isApiMarket
+        ? {
+            "x-api-market-key": this.apiMarketKey,
+            "Accept": "application/json",
+          }
+        : {
+            "X-RapidAPI-Key": this.rapidKey,
+            "X-RapidAPI-Host": "aerodatabox.p.rapidapi.com",
+          } as Record<string, string>;
+
+      const response = await fetch(url, { headers });
 
       if (!response.ok) {
         throw new FlightProviderError(
