@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
 import { AeroDataProvider } from "@/lib/providers/aerodata";
 import { statusFromDTO } from "@/lib/mappers";
+import { iataToIana } from "@/lib/airports";
+import { formatInTimeZone } from "date-fns-tz";
 
 const prisma = getPrisma();
 const flightProvider = new AeroDataProvider();
@@ -30,7 +32,9 @@ export async function POST(
       carrierIata: flight.carrierIata,
       flightNumber: flight.flightNumber,
       serviceDateISO: flight.serviceDate.toISOString().split('T')[0], // YYYY-MM-DD
-    };
+      ...(flight.originIata ? { originIata: flight.originIata } : {}),
+      ...(flight.destIata ? { destIata: flight.destIata } : {}),
+    } as const;
 
     const statusData = await flightProvider.getStatus(flightQuery);
 
@@ -65,20 +69,49 @@ export async function POST(
       },
     });
 
+    // Determine origin-local service date from provider data; if differs, correct the record
+    let correctedServiceDate: Date | undefined;
+    try {
+      const originForTz = statusData.originIata || flight.originIata || undefined;
+      const baseTime = snapshot.schedDep || snapshot.estDep || snapshot.actDep;
+      if (originForTz && baseTime) {
+        const tz = iataToIana(originForTz);
+        if (tz) {
+          const localIso = formatInTimeZone(baseTime, tz, 'yyyy-MM-dd');
+          correctedServiceDate = new Date(`${localIso}T00:00:00Z`);
+        }
+      }
+    } catch {}
+
     // Update denormalized fields on flight record
+    const baseUpdate = {
+      latestSchedDep: snapshot.schedDep,
+      latestSchedArr: snapshot.schedArr,
+      latestEstDep: snapshot.estDep,
+      latestEstArr: snapshot.estArr,
+      latestGateDep: snapshot.gateDep,
+      latestGateArr: snapshot.gateArr,
+      latestTerminalDep: snapshot.terminalDep,
+      latestTerminalArr: snapshot.terminalArr,
+      latestStatus: snapshot.status,
+      originIata: statusData.originIata || flight.originIata,
+      destIata: statusData.destIata || flight.destIata,
+    } as const;
+
+    const withDate = (() => {
+      if (correctedServiceDate) {
+        const currentIso = flight.serviceDate.toISOString().split('T')[0];
+        const correctedIso = correctedServiceDate.toISOString().split('T')[0];
+        if (currentIso !== correctedIso) {
+          return { ...baseUpdate, serviceDate: correctedServiceDate };
+        }
+      }
+      return baseUpdate;
+    })();
+
     const updatedFlight = await prisma.flight.update({
       where: { id: flight.id },
-      data: {
-        latestSchedDep: snapshot.schedDep,
-        latestSchedArr: snapshot.schedArr,
-        latestEstDep: snapshot.estDep,
-        latestEstArr: snapshot.estArr,
-        latestGateDep: snapshot.gateDep,
-        latestGateArr: snapshot.gateArr,
-        latestStatus: snapshot.status,
-        originIata: statusData.originIata || flight.originIata,
-        destIata: statusData.destIata || flight.destIata,
-      },
+      data: withDate,
     });
 
     return NextResponse.json({
