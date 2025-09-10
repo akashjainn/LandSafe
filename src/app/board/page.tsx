@@ -198,19 +198,42 @@ function RealtimeProgressInline({ flightId, flight }: { flightId: string; flight
   );
 }
 
-// ---------------- Connecting Flights Grouping ----------------
-// A connection group is a chain where dest of leg N == origin of leg N+1 and the next dep is within MAX_CONNECTION_HOURS.
+// ---------------- Journey-based Connecting Flights ----------------
+// New UX pattern: Journey header + vertical timeline with legs
 const MAX_CONNECTION_HOURS = 8;
 type BoardFlight = Flight; // alias for clarity
 
-interface ConnectionGroup {
+type FlightLeg = {
   id: string;
-  flights: BoardFlight[];
-  origin: string | undefined;
-  destination: string | undefined;
-  totalLegs: number;
-  depTime?: Date;
-  arrTime?: Date;
+  marketingCarrier: string;
+  flightNumber: string;
+  dep: { 
+    iata: string; 
+    timeSched: Date; 
+    timeAct?: Date; 
+    gate?: string; 
+    terminal?: string; 
+  };
+  arr: { 
+    iata: string; 
+    timeSched: Date; 
+    timeEst?: Date; 
+    timeAct?: Date; 
+    gate?: string; 
+    terminal?: string; 
+    belt?: string; 
+  };
+  status: "SCHEDULED"|"BOARDING"|"DEPARTED"|"ENROUTE"|"LANDED"|"CANCELLED"|"DIVERTED";
+  notes?: string; // passenger label/name
+  originalFlight: BoardFlight; // reference to original data
+};
+
+type Itinerary = {
+  id: string;
+  legs: FlightLeg[];
+  totalDurationMin: number;
+  origin: string;
+  destination: string;
 }
 
 function toDate(maybe: Date | string | null | undefined): Date | undefined {
@@ -219,16 +242,61 @@ function toDate(maybe: Date | string | null | undefined): Date | undefined {
 function depTime(f: BoardFlight): Date | undefined { return toDate(f.latestEstDep || f.latestSchedDep); }
 function arrTime(f: BoardFlight): Date | undefined { return toDate(f.latestEstArr || f.latestSchedArr); }
 
-function buildConnectionGroups(flights: BoardFlight[]): ConnectionGroup[] {
+function flightToLeg(flight: BoardFlight): FlightLeg {
+  const depScheduled = toDate(flight.latestSchedDep);
+  const depActual = toDate(flight.latestEstDep);
+  const arrScheduled = toDate(flight.latestSchedArr);
+  const arrEstimated = toDate(flight.latestEstArr);
+  
+  // Map flight status to our enum
+  const mapStatus = (status?: string): FlightLeg['status'] => {
+    switch (status?.toUpperCase()) {
+      case 'BOARDING': return 'BOARDING';
+      case 'DEPARTED': return 'DEPARTED';
+      case 'ENROUTE': return 'ENROUTE';
+      case 'LANDED': return 'LANDED';
+      case 'CANCELLED': return 'CANCELLED';
+      case 'DIVERTED': return 'DIVERTED';
+      default: return 'SCHEDULED';
+    }
+  };
+  
+  return {
+    id: flight.id,
+    marketingCarrier: flight.carrierIata,
+    flightNumber: flight.flightNumber,
+    dep: {
+      iata: flight.originIata || '???',
+      timeSched: depScheduled || new Date(),
+      timeAct: depActual,
+      gate: flight.latestGateDep,
+      terminal: flight.latestTerminalDep || undefined,
+    },
+    arr: {
+      iata: flight.destIata || '???',
+      timeSched: arrScheduled || new Date(),
+      timeEst: arrEstimated,
+      gate: flight.latestGateArr,
+      terminal: flight.latestTerminalArr || undefined,
+    },
+    status: mapStatus(flight.latestStatus),
+    notes: flight.notes || undefined,
+    originalFlight: flight
+  };
+}
+
+function buildItineraries(flights: BoardFlight[]): Itinerary[] {
   const remaining = new Set(flights.map(f=>f.id));
   const byId: Record<string, BoardFlight> = Object.fromEntries(flights.map(f=>[f.id,f]));
-  const groups: ConnectionGroup[] = [];
+  const itineraries: Itinerary[] = [];
   const flightsSorted = [...flights].sort((a,b) => (depTime(a)?.getTime()||0) - (depTime(b)?.getTime()||0));
+  
   for (const f of flightsSorted) {
     if (!remaining.has(f.id)) continue;
     const chain: BoardFlight[] = [f];
     remaining.delete(f.id);
     let last = f;
+    
     // try to extend forward greedily
     while (true) {
       const lastArr = arrTime(last);
@@ -251,69 +319,161 @@ function buildConnectionGroups(flights: BoardFlight[]): ConnectionGroup[] {
       remaining.delete(next.id);
       last = next;
     }
-    const group: ConnectionGroup = {
+    
+    // Convert to itinerary
+    const legs = chain.map(flightToLeg);
+    const firstDep = legs[0].dep.timeSched;
+    const lastArr = legs[legs.length-1].arr.timeEst || legs[legs.length-1].arr.timeSched;
+    const totalDurationMin = Math.round((lastArr.getTime() - firstDep.getTime()) / 60000);
+    
+    const itinerary: Itinerary = {
       id: chain.map(c=>c.id).join('_'),
-      flights: chain,
-  origin: chain[0].originIata || undefined,
-  destination: chain[chain.length-1].destIata || undefined,
-      totalLegs: chain.length,
-      depTime: depTime(chain[0]),
-      arrTime: arrTime(chain[chain.length-1])
+      legs,
+      totalDurationMin,
+      origin: legs[0].dep.iata,
+      destination: legs[legs.length-1].arr.iata
     };
-    groups.push(group);
+    itineraries.push(itinerary);
   }
-  return groups;
+  return itineraries;
 }
 
 function formatHm(d?: Date) { if (!d) return '—'; return d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'}); }
 
-function layoverMinutes(prev: BoardFlight, next: BoardFlight): number | undefined {
-  const a = arrTime(prev); const d = depTime(next); if (!a||!d) return undefined; return Math.round((d.getTime()-a.getTime())/60000);
+function calculateOverallProgress(itinerary: Itinerary): number {
+  const now = new Date();
+  const start = itinerary.legs[0].dep.timeSched;
+  const end = itinerary.legs[itinerary.legs.length - 1].arr.timeEst || 
+             itinerary.legs[itinerary.legs.length - 1].arr.timeSched;
+  
+  if (now.getTime() >= end.getTime()) return 100;
+  if (now.getTime() <= start.getTime()) return 0;
+  
+  return Math.round(((now.getTime() - start.getTime()) / (end.getTime() - start.getTime())) * 100);
 }
 
-function ConnectionGroupCard({ group }: { group: ConnectionGroup }) {
-  const [open, setOpen] = React.useState(false);
-  if (group.totalLegs === 1) return null; // not used for single-leg
-  const totalDurationMin = (group.depTime && group.arrTime) ? Math.round((group.arrTime.getTime()-group.depTime.getTime())/60000) : undefined;
+function StatusBadge({ status }: { status: FlightLeg['status'] }) {
+  const config = {
+    SCHEDULED: { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-300', dot: 'bg-gray-400', label: 'Scheduled' },
+    BOARDING: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-300', dot: 'bg-blue-500', label: 'Boarding' },
+    DEPARTED: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-300', dot: 'bg-green-500', label: 'Departed' },
+    ENROUTE: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-300', dot: 'bg-green-500 animate-pulse', label: 'En-route' },
+    LANDED: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-300', dot: 'bg-purple-500', label: 'Landed' },
+    CANCELLED: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-300', dot: 'bg-red-500', label: 'Cancelled' },
+    DIVERTED: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-300', dot: 'bg-amber-500', label: 'Diverted' },
+  };
+  
+  const style = config[status];
   return (
-    <Card className="border border-sky-200 bg-sky-50/40 shadow-sm">
+    <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${style.bg} ${style.text} border ${style.border}`}>
+      <div className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+      {style.label}
+    </div>
+  );
+}
+
+function LayoverBlock({ prev, next }: { prev: FlightLeg; next: FlightLeg }) {
+  const mins = Math.round((next.dep.timeSched.getTime() - prev.arr.timeSched.getTime()) / 60000);
+  const risky = mins < 45 || (prev.arr.terminal && next.dep.terminal && prev.arr.terminal !== next.dep.terminal && mins < 75);
+  
+  return (
+    <div className={`mt-3 ml-[-1rem] p-3 rounded-xl ${risky ? "bg-amber-50 border border-amber-300" : "bg-gray-50"}`}>
+      <div className="text-sm">
+        Layover {next.dep.iata} — <span className={risky ? "font-semibold text-amber-700" : ""}>{mins} min</span>
+        {prev.arr.terminal && next.dep.terminal && ` • ${prev.arr.terminal} → ${next.dep.terminal}`}
+        {risky && <span className="text-amber-600 ml-2">⚠ Tight connection</span>}
+      </div>
+    </div>
+  );
+}
+
+function JourneyCard({ itinerary }: { itinerary: Itinerary }) {
+  const [open, setOpen] = React.useState(false);
+  const overallProgress = calculateOverallProgress(itinerary);
+  const currentLegIndex = itinerary.legs.findIndex(leg => {
+    const now = new Date();
+    return now.getTime() >= leg.dep.timeSched.getTime() && 
+           now.getTime() < (leg.arr.timeEst || leg.arr.timeSched).getTime();
+  });
+  
+  const getProgressColor = () => {
+    if (overallProgress === 100) return 'bg-purple-500';
+    if (overallProgress > 0) return 'bg-green-500';
+    return 'bg-gray-400';
+  };
+  
+  return (
+    <Card className="border border-blue-200 bg-blue-50/40 shadow-sm">
       <CardContent className="p-4 space-y-3">
+        {/* Journey Header */}
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1">
-            <div className="text-sm font-semibold text-slate-700">Connecting Itinerary ({group.totalLegs} legs)</div>
-            <div className="text-xs text-slate-500">{group.origin || '???'} → {group.destination || '???'} · {formatHm(group.depTime)} → {formatHm(group.arrTime)} {totalDurationMin ? `· ${totalDurationMin} min total` : ''}</div>
+            <div className="text-lg font-semibold text-slate-800">
+              {itinerary.origin} → {itinerary.destination}
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-600">
+              <span>Total {Math.round(itinerary.totalDurationMin / 60)}h {itinerary.totalDurationMin % 60}m</span>
+              {itinerary.legs.length > 1 && <span>• {itinerary.legs.length - 1} stop{itinerary.legs.length > 2 ? 's' : ''}</span>}
+              {currentLegIndex >= 0 && <span>• Leg {currentLegIndex + 1} of {itinerary.legs.length} in progress</span>}
+            </div>
           </div>
-          <Button variant="outline" size="sm" onClick={()=>setOpen(o=>!o)} className="text-xs">
-            {open ? 'Hide Details' : 'Show Details'}
+          <Button variant="outline" size="sm" onClick={() => setOpen(o => !o)} className="text-xs">
+            {open ? 'Hide Timeline' : 'Show Timeline'}
           </Button>
         </div>
+        
+        {/* Overall Progress Bar */}
+        <div className="space-y-1">
+          <div className="flex items-center">
+            <span className="text-xs font-medium text-slate-600">Journey Progress</span>
+            <span className="text-xs text-slate-500 ml-auto">{overallProgress}%</span>
+          </div>
+          <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
+            <div className={`h-full transition-all duration-500 ease-out ${getProgressColor()}`} style={{ width: `${overallProgress}%` }} />
+          </div>
+        </div>
+        
         {open && (
-          <div className="space-y-4">
-            {group.flights.map((f,i) => {
-              const next = group.flights[i+1];
-              const lay = next ? layoverMinutes(f,next) : undefined;
-              return (
-                <div key={f.id} className="rounded border bg-white p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-medium flex items-center gap-2 min-w-0">
-                      <span>{displayFlightIata(f.carrierIata, f.flightNumber)} · {f.originIata || '—'} → {f.destIata || '—'}</span>
-                      {f.notes && (
-                        <span
-                          title={f.notes}
-                          className="text-xs font-normal text-slate-500 italic truncate max-w-[160px]"
-                        >
-                          {f.notes}
-                        </span>
+          <div className="space-y-4 mt-4">
+            {/* Vertical Timeline */}
+            <ol className="relative border-l border-slate-300 pl-6 space-y-4">
+              {itinerary.legs.map((leg, idx) => (
+                <li key={leg.id} className="relative">
+                  <div className="absolute -left-3 top-1 w-6 h-6 rounded-full bg-white border-2 border-blue-400 flex items-center justify-center text-xs font-bold text-blue-600">
+                    {idx + 1}
+                  </div>
+                  
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div className="font-medium text-slate-800">
+                      Leg {idx + 1}/{itinerary.legs.length} — {displayFlightIata(leg.marketingCarrier, leg.flightNumber)}
+                      <span className="ml-2 text-slate-600">{leg.dep.iata} → {leg.arr.iata}</span>
+                      {leg.notes && (
+                        <span className="ml-2 text-xs text-slate-500 italic">({leg.notes})</span>
                       )}
                     </div>
-                    <div className="text-xs text-slate-500">{formatHm(depTime(f))} → {formatHm(arrTime(f))}</div>
+                    <StatusBadge status={leg.status} />
                   </div>
-                  {lay !== undefined && (
-                    <div className="mt-2 text-[11px] text-slate-500">Layover before next: {lay} min</div>
+                  
+                  <div className="text-sm text-slate-700 mb-2">
+                    <div>
+                      Dep {formatHm(leg.dep.timeAct || leg.dep.timeSched)}
+                      {leg.dep.gate && ` • Gate ${leg.dep.gate}`}
+                      {leg.dep.terminal && ` • Terminal ${leg.dep.terminal}`}
+                    </div>
+                    <div>
+                      Arr {formatHm(leg.arr.timeEst || leg.arr.timeSched)}
+                      {leg.arr.gate && ` • Gate ${leg.arr.gate}`}
+                      {leg.arr.terminal && ` • Terminal ${leg.arr.terminal}`}
+                      {leg.arr.belt && ` • Baggage ${leg.arr.belt}`}
+                    </div>
+                  </div>
+                  
+                  {idx < itinerary.legs.length - 1 && (
+                    <LayoverBlock prev={leg} next={itinerary.legs[idx + 1]} />
                   )}
-                </div>
-              );
-            })}
+                </li>
+              ))}
+            </ol>
           </div>
         )}
       </CardContent>
@@ -638,15 +798,15 @@ export default function BoardPage() {
                 <CardContent>
                   {(() => {
                     const dateFlights = flightsByDate[dateKey];
-                    const groups = buildConnectionGroups(dateFlights);
-                    const multi = groups.filter(g=>g.totalLegs>1);
-                    const groupedIds = new Set(multi.flatMap(g=>g.flights.map(f=>f.id)));
-                    const singles = dateFlights.filter(f=>!groupedIds.has(f.id));
+                    const itineraries = buildItineraries(dateFlights);
+                    const multiLegItineraries = itineraries.filter(it => it.legs.length > 1);
+                    const groupedIds = new Set(multiLegItineraries.flatMap(it => it.legs.map(leg => leg.id)));
+                    const singles = dateFlights.filter(f => !groupedIds.has(f.id));
                     return (
                       <div className="space-y-6">
-                        {/* Connection Groups */}
-                        {multi.map(group => (
-                          <ConnectionGroupCard key={group.id} group={group} />
+                        {/* Journey Cards */}
+                        {multiLegItineraries.map(itinerary => (
+                          <JourneyCard key={itinerary.id} itinerary={itinerary} />
                         ))}
                         {/* Single Flights */}
                         <div className="grid gap-4">
