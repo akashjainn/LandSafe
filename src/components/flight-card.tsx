@@ -1,10 +1,10 @@
 import { format, formatDistanceToNow } from "date-fns";
-import { ArrowRight, Clock, MapPin, Plane } from "lucide-react";
+import { Clock, MapPin, Plane, RefreshCw, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/status-badge";
 import { ProviderBadge } from "@/components/provider-badge";
-import { Card } from "@/components/ui/card";
 import Link from "next/link";
+import { formatAirportWithCity } from "@/lib/airports";
 
 // Optional real-time progress shape (mirrors realtime Flight.progress)
 interface OptionalProgress { percent?: number }
@@ -24,6 +24,11 @@ interface Flight {
   terminal?: string;
   updatedAt: Date | string;
   progress?: OptionalProgress; // optionally injected
+  passengerName?: string; // optional passenger or journey name
+  originTerminal?: string | null;
+  destTerminal?: string | null;
+  originGate?: string | null;
+  destGate?: string | null;
 }
 
 interface FlightCardProps {
@@ -35,7 +40,7 @@ export function FlightCard({ flight, className }: FlightCardProps) {
   const formatTime = (date?: Date | string | null) => {
     if (!date) return "—";
     try {
-      const d = typeof date === 'string' ? new Date(date) : date;
+      const d = typeof date === "string" ? new Date(date) : date;
       return format(d, "HH:mm");
     } catch {
       return "—";
@@ -44,14 +49,14 @@ export function FlightCard({ flight, className }: FlightCardProps) {
 
   const getLastUpdated = () => {
     try {
-      const date = typeof flight.updatedAt === 'string' ? new Date(flight.updatedAt) : flight.updatedAt;
+      const date = typeof flight.updatedAt === "string" ? new Date(flight.updatedAt) : flight.updatedAt;
       return formatDistanceToNow(date, { addSuffix: true });
     } catch {
       return "Unknown";
     }
   };
 
-  // Compute a lightweight percent if progress not provided, based on scheduled window
+  // Fallback progress
   const computeFallbackPercent = (): number => {
     const dep = flight.latestSchedDep || flight.latestEstDep;
     const arr = flight.latestSchedArr || flight.latestEstArr;
@@ -61,79 +66,109 @@ export function FlightCard({ flight, className }: FlightCardProps) {
     const now = Date.now();
     if (isNaN(depMs) || isNaN(arrMs) || arrMs <= depMs) return 0;
     if (now <= depMs) return 0;
-    if (now >= arrMs) return 99;
-    return Math.min(99, Math.max(0, Math.round(((now - depMs) / (arrMs - depMs)) * 100)));
+    if (now >= arrMs) return 100;
+    return Math.min(100, Math.max(0, Math.round(((now - depMs) / (arrMs - depMs)) * 100)));
   };
   const percent = flight.progress?.percent ?? computeFallbackPercent();
 
-  return (
-    <Link href={`/flight/${flight.id}`} prefetch className="block group focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md">
-    <Card className={cn(
-      "p-4 hover:shadow-md transition-shadow cursor-pointer relative",
-      className
-    )} role="group" aria-label={`Flight card ${flight.flightNumber}`}>      
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-sm font-semibold text-slate-900">
-          {flight.flightNumber}
-        </div>
-        <StatusBadge status={flight.latestStatus} />
-      </div>
+  const originInfo = flight.originIata ? formatAirportWithCity(flight.originIata) : undefined;
+  const destInfo = flight.destIata ? formatAirportWithCity(flight.destIata) : undefined;
+  const originCity = originInfo ? ("city" in originInfo && originInfo.city ? `${originInfo.city}` : originInfo.code) : undefined;
+  const destCity = destInfo ? ("city" in destInfo && destInfo.city ? `${destInfo.city}` : destInfo.code) : undefined;
 
-      <div className="space-y-3">
-        {/* Route */}
-        <div className="flex items-center gap-2 text-sm">
-          <div className="font-medium text-slate-900">
+  return (
+    <Link
+      href={`/flight/${flight.id}`}
+      prefetch
+      className={cn(
+        "relative block rounded-2xl border bg-background shadow-sm transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500",
+        className
+      )}
+      aria-label={`Flight ${flight.flightNumber}`}
+    >
+      <div className="grid grid-cols-12 gap-x-6 gap-y-3 p-4 sm:p-6">
+        {/* Left: Flight / Origin */}
+        <div className="col-span-12 sm:col-span-3 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="text-base font-semibold shrink-0">
+              {flight.airline}{flight.flightNumber}
+            </div>
+            {flight.passengerName && (
+              <div className="text-sm text-muted-foreground truncate">
+                {flight.passengerName}
+              </div>
+            )}
+          </div>
+          <div className="mt-1 text-2xl font-bold leading-tight">
             {flight.originIata || "—"}
           </div>
-          <ArrowRight className="h-3 w-3 text-slate-400" />
-          <div className="font-medium text-slate-900">
+            <div className="text-sm text-muted-foreground truncate">{originCity || ""}</div>
+            <div className="text-xs text-muted-foreground">
+              {formatTime(flight.latestSchedDep)}
+            </div>
+        </div>
+
+        {/* Middle: Route + Progress */}
+        <div className="col-span-12 sm:col-span-6 flex flex-col items-center justify-center min-w-0">
+          <div className="flex items-center gap-3 w-full max-w-md">
+            <div className="flex-1 h-0.5 bg-muted rounded" />
+            <Plane className="w-5 h-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <div className="flex-1 h-0.5 bg-muted rounded" />
+          </div>
+          <div className="mt-2 w-full max-w-md min-w-0">
+            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+              <span>Progress</span>
+              <span>{percent}%</span>
+            </div>
+            <div className="h-1.5 bg-muted rounded overflow-hidden" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
+              <div className="h-full bg-primary transition-all" style={{ width: `${percent}%` }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Destination */}
+        <div className="col-span-12 sm:col-span-3 sm:text-right min-w-0">
+          <div className="text-2xl font-bold leading-tight">
             {flight.destIata || "—"}
           </div>
-        </div>
-
-        {/* Inline miniature progress track with moving airplane */}
-        <div className="mt-1 mb-2">
-          <div className="relative h-2 rounded bg-slate-200 overflow-hidden" aria-label="progress miniature" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
-            <div className="absolute inset-y-0 left-0 bg-slate-300" style={{ width: `${percent}%` }} />
-            <Plane className="absolute -top-2 h-4 w-4 text-sky-600 transition-all duration-500 ease-out" style={{ left: `calc(${percent}% - 8px)` }} aria-hidden="true" />
+          <div className="text-sm text-muted-foreground truncate">{destCity || ""}</div>
+          <div className="text-xs text-muted-foreground">
+            {formatTime(flight.latestSchedArr)}
           </div>
-          <span className="sr-only">Progress {percent}%</span>
-        </div>
-
-        {/* Times */}
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <div className="text-xs uppercase text-slate-500 mb-1">Scheduled</div>
-            <div className="text-slate-700">
-              {formatTime(flight.latestSchedDep)} → {formatTime(flight.latestSchedArr)}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs uppercase text-slate-500 mb-1">Estimated</div>
-            <div className="text-slate-700">
-              {formatTime(flight.latestEstDep)} → {formatTime(flight.latestEstArr)}
-            </div>
+          <div className="mt-2 text-xs text-muted-foreground truncate">
+            Dep: {flight.originTerminal || flight.terminal || "—"}
+            <span className="mx-1">|</span>
+            Arr: {flight.destTerminal || "—"}
           </div>
         </div>
 
-        {/* Gate & Terminal */}
-        <div className="flex items-center justify-between text-xs text-slate-500">
-          <div className="flex items-center gap-1">
-            <MapPin className="h-3 w-3" />
-            <span>Gate {flight.gate || "—"} · Term {flight.terminal || "—"}</span>
+        {/* Actions Row */}
+        <div className="col-span-12 flex items-center justify-end gap-2 pt-2">
+          <div className="shrink-0">
+            <StatusBadge status={flight.latestStatus} />
           </div>
-          <div className="flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            <span>Updated {getLastUpdated()}</span>
-          </div>
+          <button
+            type="button"
+            className="shrink-0 p-2 rounded-lg hover:bg-muted text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="Refresh"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            className="shrink-0 p-2 rounded-lg hover:bg-muted text-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500"
+            aria-label="Delete"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* Provider */}
-        <div className="flex justify-end">
+        {/* Provider Footer (kept outside action row so it wraps naturally) */}
+        <div className="col-span-12 flex justify-end pt-1">
           <ProviderBadge provider="AeroDataBox" isActive />
         </div>
       </div>
-  </Card>
-  </Link>
+      <span className="sr-only">Last updated {getLastUpdated()}</span>
+    </Link>
   );
 }
