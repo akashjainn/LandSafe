@@ -32,27 +32,39 @@ function RealtimeProgressInline({ flightId }: { flightId: string }) {
   // Choose progress bar color based on status
   const getProgressColor = () => {
     if (landed) return 'bg-emerald-500';
-    if (departed) return 'bg-blue-500';
+    if (departed) return 'bg-green-500';
     return 'bg-slate-400';
+  };
+
+  // Determine what status badge to show
+  const getStatusBadge = () => {
+    if (landed) {
+      return (
+        <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          Landed
+        </div>
+      );
+    }
+    if (departed) {
+      return (
+        <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+          Departed
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
     <div className="mt-3 space-y-2">
-      {/* Status badges */}
-      <div className="flex items-center gap-1.5">
-        <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
-          departed ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-slate-50 text-slate-500 border border-slate-200'
-        }`}>
-          <div className={`w-1.5 h-1.5 rounded-full ${departed ? 'bg-green-500' : 'bg-slate-400'}`} />
-          Departed
+      {/* Status badge - only show if departed or landed */}
+      {getStatusBadge() && (
+        <div className="flex justify-center">
+          {getStatusBadge()}
         </div>
-        <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
-          landed ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-50 text-slate-500 border border-slate-200'
-        }`}>
-          <div className={`w-1.5 h-1.5 rounded-full ${landed ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-          Landed
-        </div>
-      </div>
+      )}
       
       {/* Progress bar with percentage */}
       <div className="space-y-1">
