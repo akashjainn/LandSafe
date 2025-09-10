@@ -38,31 +38,31 @@ export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
       {/* Sidebar */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-50 bg-white border-r border-slate-200 transition-all duration-300",
+        "fixed inset-y-0 left-0 z-50 bg-gradient-to-b from-slate-900 via-slate-800 to-blue-900 shadow-2xl transition-all duration-300",
         sidebarCollapsed ? "w-16" : "w-64",
         sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
         <div className="flex h-full flex-col">
           {/* Logo */}
-          <div className="flex h-16 items-center px-4 border-b border-slate-200">
+          <div className="flex h-16 items-center px-4 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-r from-emerald-500 to-blue-500 flex items-center justify-center shadow-lg">
                 <Plane className="h-4 w-4 text-white" />
               </div>
               {!sidebarCollapsed && (
                 <>
-                  <span className="text-lg font-semibold text-slate-900">LandSafe</span>
-                  <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">Dev</span>
+                  <span className="text-lg font-bold text-white">LandSafe</span>
+                  <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full font-medium">Pro</span>
                 </>
               )}
             </div>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1 p-4">
+          <nav className="flex-1 space-y-2 p-4">
             {navigation.map((item) => {
               const isActive = pathname === item.href || 
                 (item.href !== '/' && pathname.startsWith(item.href));
@@ -71,26 +71,31 @@ export function AppShell({ children }: AppShellProps) {
                   key={item.name}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 group",
                     isActive
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                      ? "bg-white/20 text-white shadow-lg backdrop-blur-sm"
+                      : "text-blue-100 hover:bg-white/10 hover:text-white"
                   )}
                 >
-                  <item.icon className="h-4 w-4 flex-shrink-0" />
-                  {!sidebarCollapsed && item.name}
+                  <item.icon className={cn(
+                    "h-5 w-5 flex-shrink-0 transition-transform duration-200",
+                    "group-hover:scale-110"
+                  )} />
+                  {!sidebarCollapsed && (
+                    <span className="font-semibold">{item.name}</span>
+                  )}
                 </Link>
               );
             })}
           </nav>
 
           {/* Collapse toggle */}
-          <div className="border-t border-slate-200 p-4">
+          <div className="border-t border-white/10 p-4">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="w-full justify-center"
+              className="w-full justify-center text-blue-200 hover:text-white hover:bg-white/10 transition-all duration-200"
             >
               {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </Button>

@@ -46,32 +46,22 @@ export function QuotaDisplay() {
   };
 
   return (
-    <Card className="shadow-sm border-0 bg-white/70 backdrop-blur-sm">
-      <CardContent className="pt-4 pb-3">
-        <div className="flex items-center justify-between">
-          <div className="text-sm font-medium text-slate-700">
-            API Usage ({quota.month})
-          </div>
-          <Badge variant={getStatusColor()}>
-            {quota.used}/{quota.limit} calls
-          </Badge>
+    <div className="inline-flex items-center gap-3 px-4 py-2 bg-white/20 rounded-xl backdrop-blur-sm border border-white/20">
+      <div className="flex items-center gap-2">
+        <div className="text-xs font-medium text-blue-200">API Quota</div>
+        <div className={`px-2 py-1 rounded-md text-xs font-semibold ${
+          percentUsed >= 90 
+            ? 'bg-red-100 text-red-700' 
+            : percentUsed >= 75 
+            ? 'bg-amber-100 text-amber-700' 
+            : 'bg-emerald-100 text-emerald-700'
+        }`}>
+          {quota.remaining} left
         </div>
-        <div className="mt-2">
-          <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
-            <div 
-              className={`h-full transition-all duration-500 ${
-                percentUsed >= 90 ? 'bg-red-500' : 
-                percentUsed >= 75 ? 'bg-yellow-500' : 
-                'bg-green-500'
-              }`}
-              style={{ width: `${Math.min(percentUsed, 100)}%` }}
-            />
-          </div>
-          <div className="text-xs text-slate-500 mt-1">
-            {quota.remaining} calls remaining
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+      <div className="text-xs text-blue-200">
+        {quota.used}/{quota.limit} used this month
+      </div>
+    </div>
   );
 }

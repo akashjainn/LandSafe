@@ -870,106 +870,134 @@ export default function BoardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-4xl font-bold text-slate-900 mb-2">Flight Board</h1>
-              <p className="text-slate-600">Real-time flight tracking for your group</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {/* Header Section */}
+        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 rounded-2xl shadow-xl text-white p-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div className="space-y-4">
+              <h1 className="text-4xl font-bold tracking-tight">Flight Board</h1>
+              <p className="text-blue-200 text-lg">Real-time flight tracking for your group</p>
             </div>
-            <div className="flex items-center gap-3">
+            
+            <div className="flex flex-wrap items-center gap-4">
               <Button 
-                variant="outline" 
                 onClick={handleRefresh} 
                 disabled={refreshMutation.isPending}
-                className="transition-all duration-200 hover:scale-105"
+                className="bg-white/10 hover:bg-white/20 border-white/20 text-white hover:text-white transition-all duration-200 shadow-lg"
+                size="lg"
               >
-                <RefreshCw className={`h-4 w-4 mr-2 transition-transform duration-300 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
-                Refresh
+                <RefreshCw className={`h-5 w-5 mr-2 transition-transform duration-300 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
+                {refreshMutation.isPending ? 'Refreshing...' : 'Refresh All'}
               </Button>
               <Button 
                 asChild
-                className="transition-all duration-200 hover:scale-105"
+                className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white border-0 shadow-lg transition-all duration-200"
+                size="lg"
               >
                 <a href="/upload">
-                  <Upload className="h-4 w-4 mr-2" />
+                  <Upload className="h-5 w-5 mr-2" />
                   Add Flights
                 </a>
               </Button>
             </div>
           </div>
+        </div>
 
-          {/* Search and Filter Controls */}
-          <Card className="shadow-sm border-0 bg-white/70 backdrop-blur-sm">
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        {/* Search and Filter Controls */}
+        <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Search</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
-                    placeholder="Search flights..."
+                    placeholder="Flight, route, or notes..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 border-slate-200 focus:border-blue-400 transition-colors"
+                    className="pl-10 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 bg-white/90"
                   />
                 </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Year</label>
                 <div className="relative">
                   <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
-                    placeholder="Year (e.g., 2025)"
+                    placeholder="2025"
                     value={yearFilter}
                     onChange={(e) => setYearFilter(e.target.value)}
-                    className="pl-10 border-slate-200 focus:border-blue-400 transition-colors"
+                    className="pl-10 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 bg-white/90"
                   />
                 </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Month</label>
                 <Input
-                  placeholder="Month (1-12)"
+                  placeholder="09"
                   value={monthFilter}
                   onChange={(e) => setMonthFilter(e.target.value)}
-                  className="border-slate-200 focus:border-blue-400 transition-colors"
+                  className="border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 bg-white/90"
                 />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Day</label>
                 <Input
-                  placeholder="Day (1-31)"
+                  placeholder="15"
                   value={dayFilter}
                   onChange={(e) => setDayFilter(e.target.value)}
-                  className="border-slate-200 focus:border-blue-400 transition-colors"
+                  className="border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 bg-white/90"
                 />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700 opacity-0">Clear</label>
                 <Button 
                   variant="outline" 
                   onClick={clearFilters} 
-                  className="transition-all duration-200 hover:bg-slate-50"
+                  className="w-full transition-all duration-200 hover:bg-slate-50 border-slate-200"
                 >
-                  Clear
+                  Clear Filters
                 </Button>
               </div>
-              <div className="mt-4 text-sm text-slate-500">
+            </div>
+            
+            <div className="mt-4 flex items-center justify-between">
+              <div className="text-sm text-slate-500">
                 {flights.length} flight{flights.length !== 1 ? 's' : ''} found
               </div>
-            </CardContent>
-          </Card>
-
-          {/* API Quota Status */}
-          <QuotaDisplay />
-        </div>
+              <QuotaDisplay />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Flights by Date */}
         {isLoading ? (
-          <Card className="shadow-sm border-0 bg-white/70 backdrop-blur-sm">
-            <CardContent className="pt-6">
-              <div className="text-center py-12">
-                <RefreshCw className="h-8 w-8 text-slate-400 mx-auto mb-4 animate-spin" />
-                <p className="text-slate-500">Loading flights...</p>
+          <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+            <CardContent className="p-12">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full mx-auto mb-6 flex items-center justify-center">
+                  <RefreshCw className="h-8 w-8 text-white animate-spin" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-700 mb-2">Loading flights...</h3>
+                <p className="text-slate-500">Please wait while we fetch your flight data</p>
               </div>
             </CardContent>
           </Card>
         ) : sortedDates.length === 0 ? (
-          <Card className="shadow-sm border-0 bg-white/70 backdrop-blur-sm">
-            <CardContent className="pt-6">
-              <div className="text-center py-12">
-                <Plane className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500 mb-6">No flights found</p>
-                <Button asChild variant="outline">
+          <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+            <CardContent className="p-12">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-r from-slate-400 to-slate-500 rounded-full mx-auto mb-6 flex items-center justify-center">
+                  <Plane className="h-8 w-8 text-white" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-700 mb-2">No flights found</h3>
+                <p className="text-slate-500 mb-6">Start tracking your flights by adding them to your board</p>
+                <Button asChild className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white border-0 shadow-lg">
                   <a href="/upload">Add Your First Flight</a>
                 </Button>
               </div>
@@ -978,16 +1006,16 @@ export default function BoardPage() {
         ) : (
           <div className="space-y-6">
             {sortedDates.map((dateKey) => (
-              <Card key={dateKey} className="shadow-sm border-0 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:shadow-md">
-                <CardHeader className="pb-4">
+              <Card key={dateKey} className="border-0 shadow-lg bg-white/80 backdrop-blur-sm transition-all duration-300 hover:shadow-xl">
+                <CardHeader className="pb-4 bg-gradient-to-r from-slate-800 to-blue-800 text-white rounded-t-lg">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-3 text-xl font-semibold text-slate-800">
-                      <div className="w-2 h-8 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
+                    <CardTitle className="flex items-center gap-3 text-xl font-semibold">
+                      <Calendar className="w-5 h-5" />
                       {formatInTimeZone(new Date(dateKey), 'UTC', 'EEEE, MMMM d, yyyy')}
                     </CardTitle>
-                    <Badge variant="secondary" className="bg-slate-100 text-slate-600">
+                    <div className="px-3 py-1 bg-white/20 rounded-full text-sm font-medium">
                       {flightsByDate[dateKey].length} flight{flightsByDate[dateKey].length !== 1 ? 's' : ''}
-                    </Badge>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -1008,7 +1036,7 @@ export default function BoardPage() {
                           {singles.map(flight => (
                             <Card
                               key={flight.id}
-                              className="transition-all duration-200 hover:shadow-sm border border-slate-200 bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="border-0 shadow-md bg-gradient-to-r from-white to-slate-50/50 hover:shadow-lg transition-all duration-200 cursor-pointer group"
                               role="button"
                               tabIndex={0}
                               onClick={(e) => handleCardNavigate(e, flight.id)}

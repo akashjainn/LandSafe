@@ -74,53 +74,66 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
-          <p className="text-slate-600">Overview of your tracked flights</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+      <div className="container mx-auto px-4 py-8 space-y-8">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 rounded-2xl shadow-xl text-white p-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div className="space-y-4">
+              <h1 className="text-4xl font-bold tracking-tight">Dashboard</h1>
+              <p className="text-blue-200 text-lg">Overview of your tracked flights</p>
+            </div>
+            <Button 
+              asChild
+              className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white border-0 shadow-lg transition-all duration-200"
+              size="lg"
+            >
+              <a href="/upload">
+                <Plus className="h-5 w-5 mr-2" />
+                Add Flight
+              </a>
+            </Button>
+          </div>
         </div>
-        <Button asChild>
-          <a href="/upload">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Flight
-          </a>
-        </Button>
-      </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Flights Tracked Today</CardTitle>
-            <Plane className="h-4 w-4 text-slate-600" />
+            <CardTitle className="text-sm font-semibold text-slate-700">Flights Tracked</CardTitle>
+            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center">
+              <Plane className="h-5 w-5 text-white" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalFlights}</div>
-            <p className="text-xs text-slate-600">
+            <div className="text-3xl font-bold text-slate-900">{totalFlights}</div>
+            <p className="text-sm text-slate-600 mt-1">
               Active monitoring
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">On-time Performance</CardTitle>
-            <TrendingUp className="h-4 w-4 text-slate-600" />
+            <CardTitle className="text-sm font-semibold text-slate-700">On-time Performance</CardTitle>
+            <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-green-500 rounded-full flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-white" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{onTimePercentage}%</div>
-            <p className="text-xs text-slate-600">
+            <div className="text-3xl font-bold text-slate-900">{onTimePercentage}%</div>
+            <p className="text-sm text-slate-600 mt-1">
               {onTimeFlights} of {totalFlights} flights
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average Delay</CardTitle>
-            <Clock className="h-4 w-4 text-slate-600" />
+            <CardTitle className="text-sm font-semibold text-slate-700">Average Delay</CardTitle>
+            <div className="w-10 h-10 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full flex items-center justify-center">
+              <Clock className="h-5 w-5 text-white" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{avgDelay !== null ? `${avgDelay}m` : '—'}</div>
@@ -201,6 +214,7 @@ export default function DashboardPage() {
           </Card>
         </div>
       )}
+      </div>
     </div>
   );
 }
