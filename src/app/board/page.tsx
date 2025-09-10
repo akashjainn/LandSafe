@@ -41,6 +41,18 @@ function RealtimeProgressInline({ flightId, flight }: { flightId: string; flight
       let departed = false;
       let landed = false;
       
+      // Debug: Log the times to see what we're working with
+      console.log(`Fallback calc for flight ${flightId}:`, {
+        depTime: depTime.toString(),
+        arrTime: arrTime.toString(),
+        now: now.toString(),
+        depMs,
+        arrMs,
+        nowMs,
+        depPassed: nowMs >= depMs,
+        arrPassed: nowMs >= arrMs
+      });
+      
       if (nowMs >= arrMs) {
         percent = 100;
         departed = true;
@@ -49,6 +61,8 @@ function RealtimeProgressInline({ flightId, flight }: { flightId: string; flight
         percent = Math.round(((nowMs - depMs) / (arrMs - depMs)) * 100);
         departed = true;
       }
+      
+      console.log(`Fallback result for ${flightId}:`, { percent, departed, landed });
       
       return (
         <div className="mt-3 space-y-2">
@@ -102,9 +116,33 @@ function RealtimeProgressInline({ flightId, flight }: { flightId: string; flight
   
   if (!rt) return null; // This shouldn't happen due to above checks, but for type safety
   
-  const percent = rt.progress?.percent ?? 0;
-  const departed = rt.progress?.departed;
-  const landed = rt.progress?.landed;
+  let percent = rt.progress?.percent ?? 0;
+  let departed = rt.progress?.departed;
+  let landed = rt.progress?.landed;
+  
+  // If the realtime API returned data but no departure/landing status,
+  // and percent is 0, it's likely all flights are in the future
+  if (percent === 0 && !departed && !landed && flight) {
+    // Use stored flight times as additional check
+    const now = new Date();
+    const depTime = flight.latestEstDep || flight.latestSchedDep;
+    const arrTime = flight.latestEstArr || flight.latestSchedArr;
+    
+    if (depTime && arrTime) {
+      const depMs = new Date(depTime).getTime();
+      const arrMs = new Date(arrTime).getTime();
+      const nowMs = now.getTime();
+      
+      if (nowMs >= arrMs) {
+        percent = 100;
+        departed = true;
+        landed = true;
+      } else if (nowMs >= depMs) {
+        percent = Math.round(((nowMs - depMs) / (arrMs - depMs)) * 100);
+        departed = true;
+      }
+    }
+  }
   
   // Choose progress bar color based on status
   const getProgressColor = () => {
