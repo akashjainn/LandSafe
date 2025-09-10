@@ -295,8 +295,16 @@ function ConnectionGroupCard({ group }: { group: ConnectionGroup }) {
               return (
                 <div key={f.id} className="rounded border bg-white p-3">
                   <div className="flex items-center justify-between">
-                    <div className="text-sm font-medium">
-                      {displayFlightIata(f.carrierIata, f.flightNumber)} · {f.originIata || '—'} → {f.destIata || '—'}
+                    <div className="text-sm font-medium flex items-center gap-2 min-w-0">
+                      <span>{displayFlightIata(f.carrierIata, f.flightNumber)} · {f.originIata || '—'} → {f.destIata || '—'}</span>
+                      {f.notes && (
+                        <span
+                          title={f.notes}
+                          className="text-xs font-normal text-slate-500 italic truncate max-w-[160px]"
+                        >
+                          {f.notes}
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-slate-500">{formatHm(depTime(f))} → {formatHm(arrTime(f))}</div>
                   </div>
