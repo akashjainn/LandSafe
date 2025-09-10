@@ -17,7 +17,12 @@ import {
   Search,
   Filter,
   Trash2,
-  ArrowRight
+  ArrowRight,
+  Clock,
+  User,
+  ChevronUp,
+  ChevronDown,
+  Calendar
 } from "lucide-react";
 import React from "react";
 import { useFlights, useRefreshAllFlights, useDeleteFlight, useRefreshFlight } from "@/hooks/useFlights";
@@ -354,20 +359,62 @@ function calculateOverallProgress(itinerary: Itinerary): number {
 
 function StatusBadge({ status }: { status: FlightLeg['status'] }) {
   const config = {
-    SCHEDULED: { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-300', dot: 'bg-gray-400', label: 'Scheduled' },
-    BOARDING: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-300', dot: 'bg-blue-500', label: 'Boarding' },
-    DEPARTED: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-300', dot: 'bg-green-500', label: 'Departed' },
-    ENROUTE: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-300', dot: 'bg-green-500 animate-pulse', label: 'En-route' },
-    LANDED: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-300', dot: 'bg-purple-500', label: 'Landed' },
-    CANCELLED: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-300', dot: 'bg-red-500', label: 'Cancelled' },
-    DIVERTED: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-300', dot: 'bg-amber-500', label: 'Diverted' },
+    SCHEDULED: { 
+      bg: 'bg-gradient-to-r from-slate-50 to-gray-50', 
+      text: 'text-slate-700', 
+      border: 'border-slate-300', 
+      dot: 'bg-slate-500', 
+      label: 'Scheduled' 
+    },
+    BOARDING: { 
+      bg: 'bg-gradient-to-r from-blue-50 to-indigo-50', 
+      text: 'text-blue-700', 
+      border: 'border-blue-300', 
+      dot: 'bg-blue-500 animate-pulse', 
+      label: 'Boarding' 
+    },
+    DEPARTED: { 
+      bg: 'bg-gradient-to-r from-emerald-50 to-green-50', 
+      text: 'text-emerald-700', 
+      border: 'border-emerald-300', 
+      dot: 'bg-emerald-500', 
+      label: 'Departed' 
+    },
+    ENROUTE: { 
+      bg: 'bg-gradient-to-r from-green-50 to-emerald-50', 
+      text: 'text-green-700', 
+      border: 'border-green-300', 
+      dot: 'bg-green-500 animate-pulse', 
+      label: 'En-route' 
+    },
+    LANDED: { 
+      bg: 'bg-gradient-to-r from-purple-50 to-violet-50', 
+      text: 'text-purple-700', 
+      border: 'border-purple-300', 
+      dot: 'bg-purple-500', 
+      label: 'Landed' 
+    },
+    CANCELLED: { 
+      bg: 'bg-gradient-to-r from-red-50 to-rose-50', 
+      text: 'text-red-700', 
+      border: 'border-red-300', 
+      dot: 'bg-red-500', 
+      label: 'Cancelled' 
+    },
+    DIVERTED: { 
+      bg: 'bg-gradient-to-r from-amber-50 to-yellow-50', 
+      text: 'text-amber-700', 
+      border: 'border-amber-300', 
+      dot: 'bg-amber-500', 
+      label: 'Diverted' 
+    },
   };
   
   const style = config[status];
   return (
-    <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${style.bg} ${style.text} border ${style.border}`}>
-      <div className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
-      {style.label}
+    <div className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border shadow-sm transition-all duration-200 ${style.bg} ${style.text} ${style.border}`}>
+      <div className={`w-2 h-2 rounded-full ${style.dot}`} />
+      <span>{style.label}</span>
     </div>
   );
 }
@@ -376,12 +423,39 @@ function LayoverBlock({ prev, next }: { prev: FlightLeg; next: FlightLeg }) {
   const mins = Math.round((next.dep.timeSched.getTime() - prev.arr.timeSched.getTime()) / 60000);
   const risky = mins < 45 || (prev.arr.terminal && next.dep.terminal && prev.arr.terminal !== next.dep.terminal && mins < 75);
   
+  const hours = Math.floor(mins / 60);
+  const remainingMins = mins % 60;
+  const timeDisplay = hours > 0 ? `${hours}h ${remainingMins}m` : `${mins}m`;
+  
   return (
-    <div className={`mt-3 ml-[-1rem] p-3 rounded-xl ${risky ? "bg-amber-50 border border-amber-300" : "bg-gray-50"}`}>
-      <div className="text-sm">
-        Layover {next.dep.iata} — <span className={risky ? "font-semibold text-amber-700" : ""}>{mins} min</span>
-        {prev.arr.terminal && next.dep.terminal && ` • ${prev.arr.terminal} → ${next.dep.terminal}`}
-        {risky && <span className="text-amber-600 ml-2">⚠ Tight connection</span>}
+    <div className={`rounded-lg border p-4 ${
+      risky 
+        ? "bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200 shadow-sm" 
+        : "bg-gradient-to-r from-slate-50 to-gray-50 border-slate-200"
+    }`}>
+      <div className="flex items-center space-x-3">
+        <div className={`w-2 h-2 rounded-full ${risky ? 'bg-amber-400' : 'bg-slate-400'}`}></div>
+        <div className="flex-1">
+          <div className="flex items-center space-x-4 text-sm">
+            <div className="font-medium text-slate-700">
+              Layover in {next.dep.iata}
+            </div>
+            <div className={`font-semibold ${risky ? "text-amber-700" : "text-slate-600"}`}>
+              {timeDisplay}
+            </div>
+            {prev.arr.terminal && next.dep.terminal && (
+              <div className="text-slate-500 text-xs">
+                {prev.arr.terminal} → {next.dep.terminal}
+              </div>
+            )}
+            {risky && (
+              <div className="flex items-center space-x-1 px-2 py-1 bg-amber-100 text-amber-700 rounded-md text-xs font-medium">
+                <span>⚠</span>
+                <span>Tight connection</span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -397,83 +471,204 @@ function JourneyCard({ itinerary }: { itinerary: Itinerary }) {
   });
   
   const getProgressColor = () => {
-    if (overallProgress === 100) return 'bg-purple-500';
-    if (overallProgress > 0) return 'bg-green-500';
-    return 'bg-gray-400';
+    if (overallProgress === 100) return 'bg-gradient-to-r from-purple-500 to-purple-600';
+    if (overallProgress > 0) return 'bg-gradient-to-r from-emerald-500 to-green-500';
+    return 'bg-slate-300';
   };
+
+  const totalHours = Math.floor(itinerary.totalDurationMin / 60);
+  const totalMinutes = itinerary.totalDurationMin % 60;
+  const stopCount = itinerary.legs.length - 1;
   
   return (
-    <Card className="border border-blue-200 bg-blue-50/40 shadow-sm">
-      <CardContent className="p-4 space-y-3">
-        {/* Journey Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col gap-1">
-            <div className="text-lg font-semibold text-slate-800">
-              {itinerary.origin} → {itinerary.destination}
-            </div>
-            <div className="flex items-center gap-2 text-xs text-slate-600">
-              <span>Total {Math.round(itinerary.totalDurationMin / 60)}h {itinerary.totalDurationMin % 60}m</span>
-              {itinerary.legs.length > 1 && <span>• {itinerary.legs.length - 1} stop{itinerary.legs.length > 2 ? 's' : ''}</span>}
-              {currentLegIndex >= 0 && <span>• Leg {currentLegIndex + 1} of {itinerary.legs.length} in progress</span>}
-            </div>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setOpen(o => !o)} className="text-xs">
-            {open ? 'Hide Timeline' : 'Show Timeline'}
-          </Button>
-        </div>
-        
-        {/* Overall Progress Bar */}
-        <div className="space-y-1">
-          <div className="flex items-center">
-            <span className="text-xs font-medium text-slate-600">Journey Progress</span>
-            <span className="text-xs text-slate-500 ml-auto">{overallProgress}%</span>
-          </div>
-          <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
-            <div className={`h-full transition-all duration-500 ease-out ${getProgressColor()}`} style={{ width: `${overallProgress}%` }} />
-          </div>
-        </div>
-        
-        {open && (
-          <div className="space-y-4 mt-4">
-            {/* Vertical Timeline */}
-            <ol className="relative border-l border-slate-300 pl-6 space-y-4">
-              {itinerary.legs.map((leg, idx) => (
-                <li key={leg.id} className="relative">
-                  <div className="absolute -left-3 top-1 w-6 h-6 rounded-full bg-white border-2 border-blue-400 flex items-center justify-center text-xs font-bold text-blue-600">
-                    {idx + 1}
+    <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-50 to-blue-50/50 overflow-hidden">
+      <CardContent className="p-0">
+        {/* Header Section */}
+        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 text-white p-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-3">
+              {/* Route Display */}
+              <div className="flex items-center space-x-3">
+                <div className="text-2xl font-bold tracking-wide">
+                  {itinerary.origin}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="h-px bg-white/40 w-8"></div>
+                  <div className="w-2 h-2 rounded-full bg-white/60"></div>
+                  {stopCount > 0 && (
+                    <>
+                      <div className="h-px bg-white/40 w-6"></div>
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-300"></div>
+                    </>
+                  )}
+                  <div className="h-px bg-white/40 w-8"></div>
+                  <ArrowRight className="w-4 h-4 text-white/80" />
+                </div>
+                <div className="text-2xl font-bold tracking-wide">
+                  {itinerary.destination}
+                </div>
+              </div>
+              
+              {/* Journey Metadata */}
+              <div className="flex items-center space-x-6 text-sm text-blue-200">
+                <div className="flex items-center space-x-2">
+                  <Clock className="w-4 h-4" />
+                  <span>{totalHours}h {totalMinutes}m total</span>
+                </div>
+                {stopCount > 0 && (
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="w-4 h-4" />
+                    <span>{stopCount} stop{stopCount > 1 ? 's' : ''}</span>
                   </div>
-                  
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                    <div className="font-medium text-slate-800">
-                      Leg {idx + 1}/{itinerary.legs.length} — {displayFlightIata(leg.marketingCarrier, leg.flightNumber)}
-                      <span className="ml-2 text-slate-600">{leg.dep.iata} → {leg.arr.iata}</span>
-                      {leg.notes && (
-                        <span className="ml-2 text-xs text-slate-500 italic">({leg.notes})</span>
+                )}
+                {currentLegIndex >= 0 && (
+                  <div className="flex items-center space-x-2">
+                    <Plane className="w-4 h-4" />
+                    <span>Leg {currentLegIndex + 1} of {itinerary.legs.length} active</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              onClick={() => setOpen(o => !o)} 
+              className="bg-white/10 hover:bg-white/20 border-white/20 text-white hover:text-white transition-all duration-200"
+            >
+              {open ? (
+                <>
+                  <ChevronUp className="w-4 h-4 mr-1" />
+                  Hide Timeline
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-4 h-4 mr-1" />
+                  Show Timeline
+                </>
+              )}
+            </Button>
+          </div>
+          
+          {/* Overall Progress Bar */}
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center justify-between text-xs text-blue-200">
+              <span className="font-medium">Journey Progress</span>
+              <span className="font-semibold">{overallProgress}%</span>
+            </div>
+            <div className="h-3 rounded-full bg-white/20 overflow-hidden backdrop-blur-sm">
+              <div 
+                className={`h-full transition-all duration-700 ease-out ${getProgressColor()} shadow-sm`} 
+                style={{ width: `${overallProgress}%` }} 
+              />
+            </div>
+          </div>
+        </div>
+        
+        {/* Timeline Section */}
+        {open && (
+          <div className="p-6 bg-white">
+            <div className="space-y-6">
+              <div className="flex items-center space-x-2 text-sm text-slate-600 font-medium border-b pb-2">
+                <Calendar className="w-4 h-4" />
+                <span>Flight Timeline</span>
+              </div>
+              
+              {/* Vertical Timeline */}
+              <div className="relative">
+                {/* Timeline Line */}
+                <div className="absolute left-6 top-8 bottom-8 w-0.5 bg-gradient-to-b from-blue-200 via-slate-200 to-blue-200"></div>
+                
+                <div className="space-y-8">
+                  {itinerary.legs.map((leg, idx) => (
+                    <div key={leg.id} className="relative">
+                      {/* Timeline Dot */}
+                      <div className="absolute left-4 w-4 h-4 rounded-full bg-white border-2 border-blue-500 shadow-lg z-10 flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                      </div>
+                      
+                      {/* Flight Card */}
+                      <div className="ml-12 bg-gradient-to-r from-slate-50 to-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+                        {/* Flight Header */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center space-x-3">
+                              <div className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-md">
+                                Leg {idx + 1}/{itinerary.legs.length}
+                              </div>
+                              <div className="font-bold text-slate-900 text-lg">
+                                {displayFlightIata(leg.marketingCarrier, leg.flightNumber)}
+                              </div>
+                              <div className="text-slate-500 font-medium">
+                                {leg.dep.iata} → {leg.arr.iata}
+                              </div>
+                            </div>
+                            {leg.notes && (
+                              <div className="flex items-center space-x-2">
+                                <User className="w-3 h-3 text-slate-400" />
+                                <span className="text-sm text-slate-600 italic">{leg.notes}</span>
+                              </div>
+                            )}
+                          </div>
+                          <StatusBadge status={leg.status} />
+                        </div>
+                        
+                        {/* Flight Details Grid */}
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          {/* Departure */}
+                          <div className="space-y-2">
+                            <div className="flex items-center space-x-2 text-slate-600 font-medium">
+                              <Plane className="w-4 h-4 rotate-45" />
+                              <span>Departure</span>
+                            </div>
+                            <div className="pl-6 space-y-1">
+                              <div className="font-semibold text-slate-900">
+                                {formatHm(leg.dep.timeAct || leg.dep.timeSched)}
+                              </div>
+                              {leg.dep.gate && (
+                                <div className="text-slate-600">Gate {leg.dep.gate}</div>
+                              )}
+                              {leg.dep.terminal && (
+                                <div className="text-slate-500">Terminal {leg.dep.terminal}</div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Arrival */}
+                          <div className="space-y-2">
+                            <div className="flex items-center space-x-2 text-slate-600 font-medium">
+                              <MapPin className="w-4 h-4" />
+                              <span>Arrival</span>
+                            </div>
+                            <div className="pl-6 space-y-1">
+                              <div className="font-semibold text-slate-900">
+                                {formatHm(leg.arr.timeEst || leg.arr.timeSched)}
+                              </div>
+                              {leg.arr.gate && (
+                                <div className="text-slate-600">Gate {leg.arr.gate}</div>
+                              )}
+                              {leg.arr.terminal && (
+                                <div className="text-slate-500">Terminal {leg.arr.terminal}</div>
+                              )}
+                              {leg.arr.belt && (
+                                <div className="text-slate-500">Baggage {leg.arr.belt}</div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Layover */}
+                      {idx < itinerary.legs.length - 1 && (
+                        <div className="ml-12 mt-4">
+                          <LayoverBlock prev={leg} next={itinerary.legs[idx + 1]} />
+                        </div>
                       )}
                     </div>
-                    <StatusBadge status={leg.status} />
-                  </div>
-                  
-                  <div className="text-sm text-slate-700 mb-2">
-                    <div>
-                      Dep {formatHm(leg.dep.timeAct || leg.dep.timeSched)}
-                      {leg.dep.gate && ` • Gate ${leg.dep.gate}`}
-                      {leg.dep.terminal && ` • Terminal ${leg.dep.terminal}`}
-                    </div>
-                    <div>
-                      Arr {formatHm(leg.arr.timeEst || leg.arr.timeSched)}
-                      {leg.arr.gate && ` • Gate ${leg.arr.gate}`}
-                      {leg.arr.terminal && ` • Terminal ${leg.arr.terminal}`}
-                      {leg.arr.belt && ` • Baggage ${leg.arr.belt}`}
-                    </div>
-                  </div>
-                  
-                  {idx < itinerary.legs.length - 1 && (
-                    <LayoverBlock prev={leg} next={itinerary.legs[idx + 1]} />
-                  )}
-                </li>
-              ))}
-            </ol>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </CardContent>
