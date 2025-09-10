@@ -160,7 +160,8 @@ export default function BoardPage() {
   }, {} as Record<string, typeof flights>);
 
   // Sort dates (most recent first) and sort flights within each date
-  const sortedDates = Object.keys(flightsByDate).sort((a, b) => b.localeCompare(a));
+  // Sort ascending so earlier (chronologically closer/past) dates appear first top-to-bottom
+  const sortedDates = Object.keys(flightsByDate).sort((a, b) => a.localeCompare(b));
   
   // Sort flights within each date group
   Object.keys(flightsByDate).forEach(date => {
