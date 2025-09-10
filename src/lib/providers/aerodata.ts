@@ -27,7 +27,7 @@ export class AeroDataProvider implements FlightProvider {
       // Prefer API.Market if configured, else fallback to RapidAPI
       const isApiMarket = !!this.apiMarketKey;
   const baseUrl = `${isApiMarket ? this.apiMarketBase : this.rapidBase}/number/${flightId}`;
-  const url = `${baseUrl}/${serviceDateISO}`;
+  const url = `${baseUrl}/${serviceDateISO}?dateLocalRole=Both`;
 
       const headers = isApiMarket
         ? {
@@ -88,7 +88,7 @@ export class AeroDataProvider implements FlightProvider {
         const alt = fallbackCarrierMap[carrier];
         if (alt) {
           const altFlightId = `${alt}${query.flightNumber}`;
-          const altUrl = `${baseUrl.replace(carrier + query.flightNumber, altFlightId)}/${serviceDateISO}`;
+          const altUrl = `${baseUrl.replace(carrier + query.flightNumber, altFlightId)}/${serviceDateISO}?dateLocalRole=Both`;
           const altResp = await fetch(altUrl, { headers });
           if (altResp.ok) {
             const altData: AeroDataBoxFlight | AeroDataBoxFlight[] = await altResp.json();
@@ -115,7 +115,7 @@ export class AeroDataProvider implements FlightProvider {
         };
         const adjDates = [shiftDate(serviceDateISO, -1), shiftDate(serviceDateISO, 1)];
         for (const adj of adjDates) {
-          const adjUrl = `${baseUrl}/${adj}`;
+          const adjUrl = `${baseUrl}/${adj}?dateLocalRole=Both`;
           const adjResp = await fetch(adjUrl, { headers });
           if (!adjResp.ok) continue;
           const adjData: AeroDataBoxFlight | AeroDataBoxFlight[] = await adjResp.json();

@@ -20,6 +20,27 @@ import {
   ArrowRight
 } from "lucide-react";
 import { useFlights, useRefreshAllFlights, useDeleteFlight, useRefreshFlight } from "@/hooks/useFlights";
+import { useRealtimeFlight } from "@/hooks/useRealtimeFlight";
+
+function RealtimeProgressInline({ flightId }: { flightId: string }) {
+  const { data: rt } = useRealtimeFlight(flightId, 60000);
+  if (!rt) return null;
+  const percent = rt.progress?.percent ?? 0;
+  const departed = rt.progress?.departed;
+  const landed = rt.progress?.landed;
+  return (
+    <div className="mt-2 w-40 space-y-1">
+      <div className="h-2 rounded bg-slate-200 overflow-hidden" aria-label="progress" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
+        <div className="h-full bg-sky-500 transition-all" style={{ width: `${percent}%` }} />
+      </div>
+      <div className="flex gap-1 flex-wrap">
+        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${departed ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>Dep</span>
+        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${landed ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>Land</span>
+        <span className="text-[10px] text-slate-500 ml-1">{percent}%</span>
+      </div>
+    </div>
+  );
+}
 import { getStatusColor, getStatusLabel, FlightStatusCode, Flight } from "@/lib/types";
 import { displayFlightIata } from "@/lib/airlineCodes";
 
@@ -372,6 +393,7 @@ export default function BoardPage() {
                                   <div className="text-xs text-slate-500 mt-1">
                                     {formatDateTime(flight.latestEstDep || flight.latestSchedDep, iataToIana(flight.originIata))}
                                   </div>
+                                  <RealtimeProgressInline flightId={flight.id} />
                                 </div>
                                 
                                 <div className="flex items-center">
