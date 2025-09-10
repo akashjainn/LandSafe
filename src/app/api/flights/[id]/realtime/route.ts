@@ -41,14 +41,17 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     if (!statusDTO || (cached && cached.fetchedAt + (cached.data._ttl || 0) < Date.now())) {
       // Check quota before making API call
       if (!canMakeApiCall()) {
-        console.warn('Monthly API quota exceeded, using cached/fallback data');
-        // If we have any cached data (even expired), use it
+        console.warn('Monthly API quota exceeded, blocking external call');
+        // If we have cached (even stale) data, use it; else respond with quota status immediately
         if (cached) {
           statusDTO = cached.data;
           fromCache = true;
         } else {
-          // No cache at all, return minimal fallback
-          statusDTO = undefined;
+          return NextResponse.json({
+            success: false,
+            error: 'Monthly API quota exceeded',
+            quota: getQuotaStatus()
+          }, { status: 429 });
         }
       } else {
         try {

@@ -143,24 +143,26 @@ export function FlightCard({ flight, className }: FlightCardProps) {
         </div>
 
         {/* Actions Row */}
-        <div className="col-span-12 flex items-center justify-end gap-2 pt-2">
+        <div className="col-span-12 flex items-center justify-end gap-2 pt-2 flex-wrap min-w-0">
           <div className="shrink-0">
             <StatusBadge status={flight.latestStatus} />
           </div>
-          <button
-            type="button"
-            className="shrink-0 p-2 rounded-lg hover:bg-muted text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-            aria-label="Refresh"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            className="shrink-0 p-2 rounded-lg hover:bg-muted text-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500"
-            aria-label="Delete"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              className="p-2 rounded-lg hover:bg-muted text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Refresh"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              className="p-2 rounded-lg hover:bg-muted text-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500"
+              aria-label="Delete"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Provider Footer (kept outside action row so it wraps naturally) */}

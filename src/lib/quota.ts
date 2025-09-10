@@ -9,7 +9,7 @@ interface QuotaData {
 }
 
 const QUOTA_FILE = path.join(process.cwd(), 'api-quota.json');
-const MAX_CALLS_PER_MONTH = 600;
+const MAX_CALLS_PER_MONTH = 100; // Reduced hard cap per new requirement
 
 function getCurrentMonth(): string {
   return new Date().toISOString().slice(0, 7); // YYYY-MM
@@ -63,6 +63,12 @@ function saveQuotaData(data: QuotaData): void {
 export function canMakeApiCall(): boolean {
   const quota = loadQuotaData();
   return quota.callsUsed < MAX_CALLS_PER_MONTH;
+}
+
+export function assertCanMakeApiCall(): void {
+  if (!canMakeApiCall()) {
+    throw new Error('API quota exceeded for current month');
+  }
 }
 
 export function incrementApiCall(): void {

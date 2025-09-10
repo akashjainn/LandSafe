@@ -872,9 +872,10 @@ export default function BoardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
-      {/* Reserve space on small screens for potential floating rail */}
-      <div className="relative pr-16 md:pr-0">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 
+                      lg:grid lg:grid-cols-[1fr_auto] lg:gap-6">
+        {/* LEFT: main content */}
+        <div className="space-y-8">
         {/* Header Section */}
         <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 rounded-2xl shadow-xl text-white p-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
@@ -1065,12 +1066,54 @@ export default function BoardPage() {
             ))}
           </div>
         )}
+        </div>
+
+        {/* RIGHT: rail - only visible on large screens, sticky positioned */}
+        <aside className="hidden lg:flex sticky top-24 self-start flex-col gap-2 w-14">
+          <Button 
+            onClick={handleRefresh} 
+            disabled={refreshMutation.isPending}
+            size="sm"
+            className="w-12 h-12 p-0 bg-white/10 hover:bg-white/20 border-white/20 backdrop-blur-sm"
+            title="Refresh All Flights"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
+          </Button>
+          <Button 
+            asChild
+            size="sm"
+            className="w-12 h-12 p-0 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20 backdrop-blur-sm"
+            title="Add Flights"
+          >
+            <a href="/upload">
+              <Upload className="h-4 w-4" />
+            </a>
+          </Button>
+        </aside>
       </div>
-      {/* Example floating rail placeholder */}
-      <aside className="fixed right-4 bottom-24 md:bottom-1/3 z-30 flex flex-col gap-2">
-        {/* Future rail buttons - reserved space */}
+      
+      {/* Mobile floating rail - only visible on small/medium screens */}
+      <aside className="lg:hidden fixed right-4 bottom-24 z-20 flex flex-col gap-2">
+        <Button 
+          onClick={handleRefresh} 
+          disabled={refreshMutation.isPending}
+          size="sm"
+          className="w-12 h-12 p-0 bg-white/90 hover:bg-white shadow-lg backdrop-blur-sm"
+          title="Refresh All Flights"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
+        </Button>
+        <Button 
+          asChild
+          size="sm"
+          className="w-12 h-12 p-0 bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg"
+          title="Add Flights"
+        >
+          <a href="/upload">
+            <Upload className="h-4 w-4" />
+          </a>
+        </Button>
       </aside>
-      </div>
     </div>
   );
 }
