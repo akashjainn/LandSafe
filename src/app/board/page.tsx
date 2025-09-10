@@ -1010,19 +1010,21 @@ export default function BoardPage() {
         ) : (
           <div className="space-y-6">
             {sortedDates.map((dateKey) => (
-              <Card key={dateKey} className="border-0 shadow-lg bg-white/80 backdrop-blur-sm transition-all duration-300 hover:shadow-xl overflow-hidden">
-                <CardHeader className="pb-4 bg-gradient-to-r from-slate-800 to-blue-800 text-white">
+              <div key={dateKey} className="border-0 shadow-lg bg-white/80 backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl overflow-hidden">
+                {/* Full-width gradient header */}
+                <div className="bg-gradient-to-r from-slate-800 to-blue-800 text-white p-6">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-3 text-xl font-semibold">
+                    <div className="flex items-center gap-3 text-xl font-semibold">
                       <Calendar className="w-5 h-5" />
                       {formatInTimeZone(new Date(dateKey), 'UTC', 'EEEE, MMMM d, yyyy')}
-                    </CardTitle>
+                    </div>
                     <div className="px-3 py-1 bg-white/20 rounded-full text-sm font-medium">
                       {flightsByDate[dateKey].length} flight{flightsByDate[dateKey].length !== 1 ? 's' : ''}
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent className="pt-6">
+                </div>
+                {/* Content area with proper spacing */}
+                <div className="p-6">
                   {(() => {
                     const dateFlights = flightsByDate[dateKey];
                     const itineraries = buildItineraries(dateFlights);
@@ -1061,8 +1063,8 @@ export default function BoardPage() {
                       </div>
                     );
                   })()}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         )}
