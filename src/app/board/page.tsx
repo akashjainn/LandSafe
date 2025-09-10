@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { iataToIana, formatAirportWithCity } from "@/lib/airports";
@@ -23,6 +24,7 @@ import { getStatusColor, getStatusLabel, FlightStatusCode, Flight } from "@/lib/
 import { displayFlightIata } from "@/lib/airlineCodes";
 
 export default function BoardPage() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [yearFilter, setYearFilter] = useState("");
   const [monthFilter, setMonthFilter] = useState("");
@@ -119,6 +121,17 @@ export default function BoardPage() {
     {label}
       </Badge>
     );
+  };
+
+  const handleCardNavigate = (e: React.MouseEvent | React.KeyboardEvent, id: string) => {
+    const target = e.target as HTMLElement;
+    // Ignore clicks originating from interactive elements
+    if (target.closest('button, a, [role="button"], [data-no-nav]')) return;
+    if ('key' in e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+    }
+    router.push(`/flight/${id}`);
   };
 
   // Filter flights based on search query
@@ -320,7 +333,14 @@ export default function BoardPage() {
                 <CardContent>
                   <div className="grid gap-4">
                     {flightsByDate[dateKey].map((flight) => (
-                      <Card key={flight.id} className="transition-all duration-200 hover:shadow-sm border border-slate-200 bg-white">
+                      <Card
+                        key={flight.id}
+                        className="transition-all duration-200 hover:shadow-sm border border-slate-200 bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => handleCardNavigate(e, flight.id)}
+                        onKeyDown={(e) => handleCardNavigate(e, flight.id)}
+                      >
                         <CardContent className="p-6">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-6">
@@ -401,7 +421,7 @@ export default function BoardPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => refreshOne.mutate(flight.id)}
+                                onClick={(e) => { e.stopPropagation(); refreshOne.mutate(flight.id); }}
                                 disabled={refreshOne.isPending}
                                 className="h-8 w-8 p-0 text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors"
                                 title="Refresh this flight"
@@ -415,10 +435,10 @@ export default function BoardPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleDeleteFlight(
-                                  flight.id, 
+                                onClick={(e) => { e.stopPropagation(); handleDeleteFlight(
+                                  flight.id,
                                   `${flight.carrierIata}${flight.flightNumber}`
-                                )}
+                                ); }}
                                 disabled={deleteMutation.isPending}
                                 className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors"
                               >
