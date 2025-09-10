@@ -14,9 +14,6 @@ const flightProvider = new AeroDataProvider();
 
 export async function POST(request: NextRequest) {
   try {
-  // Per-user scoping via uid cookie
-  const existingUid = request.cookies.get("uid")?.value;
-  const uid = existingUid || (globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : Math.random().toString(36).slice(2));
     const body = await request.json();
     const { flights } = body;
 
@@ -97,12 +94,11 @@ export async function POST(request: NextRequest) {
         }
 
         // Upsert flight
-    const existingFlight = await prisma.flight.findFirst({
+  const existingFlight = await prisma.flight.findFirst({
           where: {
             carrierIata: resolvedCarrier,
             flightNumber: derivedNumber,
             serviceDate,
-      createdBy: uid,
           },
         });
 
@@ -115,7 +111,7 @@ export async function POST(request: NextRequest) {
               destIata: resolvedDest,
               // Sched times will be populated from provider snapshot if returned
               notes: label || notes,
-              createdBy: uid,
+              // createdBy removed (global scope)
             },
           });
         } else {
@@ -128,7 +124,7 @@ export async function POST(request: NextRequest) {
               destIata: resolvedDest,
               // Sched times will be populated from provider snapshot if returned
               notes: label || notes,
-              createdBy: uid,
+              // createdBy removed (global scope)
             },
           });
         }
@@ -218,7 +214,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const res = NextResponse.json({
+  return NextResponse.json({
       success: true,
       data: {
         created: results.length,
@@ -226,10 +222,6 @@ export async function POST(request: NextRequest) {
         errors,
       },
     });
-    if (!existingUid) {
-      res.cookies.set("uid", uid, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 365 });
-    }
-    return res;
   } catch (error) {
     console.error("Error in batch flight creation:", error);
     return NextResponse.json(

@@ -8,7 +8,6 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-  const uid = request.cookies.get("uid")?.value;
     const { id } = await context.params;
 
     if (!id) {
@@ -19,10 +18,9 @@ export async function DELETE(
     }
 
     // Verify ownership
-    const owned = await prisma.flight.findFirst({ where: { id, ...(uid ? { createdBy: uid } : { createdBy: null }) } });
-    if (!owned) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
+  // Global access: simply verify existence
+  const owned = await prisma.flight.findFirst({ where: { id } });
+  if (!owned) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     // First, delete all related flight status snapshots
     await prisma.flightStatusSnapshot.deleteMany({ where: { flightId: id } });

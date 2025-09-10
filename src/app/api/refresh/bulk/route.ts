@@ -13,7 +13,6 @@ const limit = pLimit(5); // Cap concurrency at 5 requests
 
 export async function POST(request: NextRequest) {
   try {
-  const uid = request.cookies.get("uid")?.value;
     const { searchParams } = new URL(request.url);
     const date = searchParams.get("date");
     const year = searchParams.get("year");
@@ -79,9 +78,7 @@ export async function POST(request: NextRequest) {
     // If no filters provided, refresh ALL flights
 
     // Get flights based on filters (or all flights if no filters)
-    const flights = await prisma.flight.findMany({
-      where: { ...whereClause, createdBy: uid ?? null },
-    });
+  const flights = await prisma.flight.findMany({ where: whereClause });
 
     if (flights.length === 0) {
       return NextResponse.json({

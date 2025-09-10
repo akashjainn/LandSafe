@@ -1,9 +1,13 @@
 import { format, formatDistanceToNow } from "date-fns";
-import { ArrowRight, Clock, MapPin } from "lucide-react";
+import { ArrowRight, Clock, MapPin, Plane } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/status-badge";
 import { ProviderBadge } from "@/components/provider-badge";
 import { Card } from "@/components/ui/card";
+import Link from "next/link";
+
+// Optional real-time progress shape (mirrors realtime Flight.progress)
+interface OptionalProgress { percent?: number }
 
 interface Flight {
   id: string;
@@ -19,6 +23,7 @@ interface Flight {
   gate?: string;
   terminal?: string;
   updatedAt: Date | string;
+  progress?: OptionalProgress; // optionally injected
 }
 
 interface FlightCardProps {
@@ -46,11 +51,27 @@ export function FlightCard({ flight, className }: FlightCardProps) {
     }
   };
 
+  // Compute a lightweight percent if progress not provided, based on scheduled window
+  const computeFallbackPercent = (): number => {
+    const dep = flight.latestSchedDep || flight.latestEstDep;
+    const arr = flight.latestSchedArr || flight.latestEstArr;
+    if (!dep || !arr) return 0;
+    const depMs = new Date(dep).getTime();
+    const arrMs = new Date(arr).getTime();
+    const now = Date.now();
+    if (isNaN(depMs) || isNaN(arrMs) || arrMs <= depMs) return 0;
+    if (now <= depMs) return 0;
+    if (now >= arrMs) return 99;
+    return Math.min(99, Math.max(0, Math.round(((now - depMs) / (arrMs - depMs)) * 100)));
+  };
+  const percent = flight.progress?.percent ?? computeFallbackPercent();
+
   return (
+    <Link href={`/flight/${flight.id}`} prefetch className="block group focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md">
     <Card className={cn(
-      "p-4 hover:shadow-md transition-shadow cursor-pointer",
+      "p-4 hover:shadow-md transition-shadow cursor-pointer relative",
       className
-    )}>
+    )} role="group" aria-label={`Flight card ${flight.flightNumber}`}>      
       <div className="flex items-center justify-between mb-3">
         <div className="text-sm font-semibold text-slate-900">
           {flight.flightNumber}
@@ -68,6 +89,15 @@ export function FlightCard({ flight, className }: FlightCardProps) {
           <div className="font-medium text-slate-900">
             {flight.destIata || "—"}
           </div>
+        </div>
+
+        {/* Inline miniature progress track with moving airplane */}
+        <div className="mt-1 mb-2">
+          <div className="relative h-2 rounded bg-slate-200 overflow-hidden" aria-label="progress miniature" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
+            <div className="absolute inset-y-0 left-0 bg-slate-300" style={{ width: `${percent}%` }} />
+            <Plane className="absolute -top-2 h-4 w-4 text-sky-600 transition-all duration-500 ease-out" style={{ left: `calc(${percent}% - 8px)` }} aria-hidden="true" />
+          </div>
+          <span className="sr-only">Progress {percent}%</span>
         </div>
 
         {/* Times */}
@@ -103,6 +133,7 @@ export function FlightCard({ flight, className }: FlightCardProps) {
           <ProviderBadge provider="AeroDataBox" isActive />
         </div>
       </div>
-    </Card>
+  </Card>
+  </Link>
   );
 }
