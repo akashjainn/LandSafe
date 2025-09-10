@@ -3,6 +3,7 @@ import { getPrisma } from '@/lib/db';
 import { AeroDataProvider } from '@/lib/providers/aerodata';
 import { computeTimeProgress } from '@/lib/realtime/timeProgress';
 import { realtimeCache, computeTTL } from '@/lib/realtime/cache';
+import { canMakeApiCall, incrementApiCall, getQuotaStatus } from '@/lib/quota';
 
 interface ProviderStatusDTO {
   status: FlightStatusCode;
@@ -38,28 +39,44 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
     // Only hit provider if no cache or cache expired (we store TTL inside entry or compute on demand below)
     if (!statusDTO || (cached && cached.fetchedAt + (cached.data._ttl || 0) < Date.now())) {
-      try {
-  const raw = await provider.getStatus({
-          carrierIata: flight.carrierIata,
-          flightNumber: flight.flightNumber,
-          serviceDateISO,
-          originIata: flight.originIata || undefined,
-          destIata: flight.destIata || undefined,
-        });
-  statusDTO = raw ? raw as ProviderStatusDTO : undefined;
-      } catch (err) {
-        const statusCode = (err as { statusCode?: number })?.statusCode;
-        // If rate limited (429) and we have a stale cache (even expired), reuse it
-        if (statusCode === 429 && cached) {
-          statusDTO = cached.data; fromCache = true;
-        } else if (!cached) {
-          // No data at all; proceed with empty handling below
+      // Check quota before making API call
+      if (!canMakeApiCall()) {
+        console.warn('Monthly API quota exceeded, using cached/fallback data');
+        // If we have any cached data (even expired), use it
+        if (cached) {
+          statusDTO = cached.data;
+          fromCache = true;
+        } else {
+          // No cache at all, return minimal fallback
           statusDTO = undefined;
         }
+      } else {
+        try {
+          const raw = await provider.getStatus({
+            carrierIata: flight.carrierIata,
+            flightNumber: flight.flightNumber,
+            serviceDateISO,
+            originIata: flight.originIata || undefined,
+            destIata: flight.destIata || undefined,
+          });
+          statusDTO = raw ? raw as ProviderStatusDTO : undefined;
+          
+          // Increment quota only on successful call
+          incrementApiCall();
+          console.log('API call made. Quota status:', getQuotaStatus());
+          
+        } catch (err) {
+          const statusCode = (err as { statusCode?: number })?.statusCode;
+          // If rate limited (429) and we have a stale cache (even expired), reuse it
+          if (statusCode === 429 && cached) {
+            statusDTO = cached.data; fromCache = true;
+          } else if (!cached) {
+            // No data at all; proceed with empty handling below
+            statusDTO = undefined;
+          }
+        }
       }
-    }
-
-  if (!statusDTO) {
+    }  if (!statusDTO) {
       return NextResponse.json({
         success: true,
         data: {

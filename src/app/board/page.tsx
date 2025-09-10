@@ -24,7 +24,7 @@ import { useFlights, useRefreshAllFlights, useDeleteFlight, useRefreshFlight } f
 import { useRealtimeFlight } from "@/hooks/useRealtimeFlight";
 
 function RealtimeProgressInline({ flightId, flight }: { flightId: string; flight?: Flight }) {
-  const { data: rt, error } = useRealtimeFlight(flightId, 60000);
+  const { data: rt, error } = useRealtimeFlight(flightId, 300000); // Poll every 5 minutes
   
   // If we have an error or no data but have flight data, try to compute fallback progress
   if ((!rt || error) && flight) {
@@ -67,9 +67,9 @@ function RealtimeProgressInline({ flightId, flight }: { flightId: string; flight
           )}
           
           <div className="space-y-1">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center">
               <span className="text-xs font-medium text-slate-600">Progress</span>
-              <span className="text-xs text-slate-500">{percent}%</span>
+              <span className="text-xs text-slate-500 ml-auto">{percent}%</span>
             </div>
             <div className="h-2 rounded-full bg-slate-200 overflow-hidden" aria-label="flight progress" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
               <div 
@@ -137,17 +137,20 @@ function RealtimeProgressInline({ flightId, flight }: { flightId: string; flight
   return (
     <div className="mt-3 space-y-2">
       {/* Status badge - only show if departed or landed */}
-      {getStatusBadge() && (
-        <div className="flex justify-center">
-          {getStatusBadge()}
-        </div>
-      )}
+      {(() => {
+        const statusBadge = getStatusBadge();
+        return statusBadge && (
+          <div className="flex justify-center">
+            {statusBadge}
+          </div>
+        );
+      })()}
       
       {/* Progress bar with percentage */}
       <div className="space-y-1">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center">
           <span className="text-xs font-medium text-slate-600">Progress</span>
-          <span className="text-xs text-slate-500">{percent}%</span>
+          <span className="text-xs text-slate-500 ml-auto">{percent}%</span>
         </div>
         <div className="h-2 rounded-full bg-slate-200 overflow-hidden" aria-label="flight progress" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
           <div className={`h-full transition-all duration-500 ease-out ${getProgressColor()}`} style={{ width: `${percent}%` }} />
@@ -273,6 +276,7 @@ function ConnectionGroupCard({ group }: { group: ConnectionGroup }) {
 }
 import { getStatusColor, getStatusLabel, FlightStatusCode, Flight } from "@/lib/types";
 import { displayFlightIata } from "@/lib/airlineCodes";
+import { QuotaDisplay } from "@/components/quota-display";
 
 export default function BoardPage() {
   const router = useRouter();
@@ -543,6 +547,9 @@ export default function BoardPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* API Quota Status */}
+          <QuotaDisplay />
         </div>
 
         {/* Flights by Date */}

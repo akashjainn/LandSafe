@@ -40,6 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# API quota tracking (local file)
+api-quota.json
+
 /src/generated/prisma
 
 .vercel
