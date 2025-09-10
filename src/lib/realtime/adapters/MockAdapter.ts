@@ -1,5 +1,5 @@
 // MockAdapter.ts - Generates synthetic mixed-state flights for demo & tests.
-import { Flight, Airport, Position, Actuals, Schedule } from "../geo";
+import { Flight, Airport } from "../geo";
 
 function airport(iata: string, lat: number, lon: number): Airport { return { iata, lat, lon }; }
 
@@ -15,7 +15,7 @@ const MIA = airport("MIA", 25.7959, -80.2870);
 const ATL = airport("ATL", 33.6407, -84.4277);
 
 export class MockAdapter {
-  private interval?: any;
+  private interval?: ReturnType<typeof setInterval>;
   private listeners: ((flights: Flight[]) => void)[] = [];
   private flights: Flight[] = [];
 

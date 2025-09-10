@@ -38,9 +38,11 @@ export const useFlightStore = create<FlightState>((set, get) => ({
   },
   setAdapter: (adapter: FlightAdapter) => {
     const prev = get().adapter;
-    if (prev && (prev as any).__unsub) (prev as any).__unsub();
-    const unsub = adapter.subscribe((flights: Flight[]) => get().upsertFlights(flights));
-    (adapter as any).__unsub = unsub;
+  // @ts-expect-error internal detach metadata
+  if (prev && prev.__unsub) prev.__unsub();
+  const unsub = adapter.subscribe((flights: Flight[]) => get().upsertFlights(flights));
+  // @ts-expect-error attach internal metadata
+  adapter.__unsub = unsub;
     set({ adapter });
   },
 }));

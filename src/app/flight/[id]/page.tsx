@@ -1,6 +1,6 @@
 // Flight detail page displaying progress UI
 "use client";
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useFlightStore } from '@/lib/realtime/store/useFlightStore';
 import { MockAdapter } from '@/lib/realtime/adapters/MockAdapter';
@@ -10,12 +10,12 @@ import { StatusPill } from '@/components/StatusPill';
 export default function FlightDetailPage() {
   const params = useParams();
   const flightId = params?.id as string;
-  const { flights, order, setAdapter } = useFlightStore();
+  const { flights, setAdapter } = useFlightStore();
 
   useEffect(() => {
     // If no adapter yet, spin up Mock to demonstrate.
     if (!Object.keys(flights).length) {
-      setAdapter(new MockAdapter() as any);
+  setAdapter(new MockAdapter());
     }
   }, [flights, setAdapter]);
 

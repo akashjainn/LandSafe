@@ -1,5 +1,6 @@
-import tailwindcss from '@tailwindcss/postcss';
-
+// PostCSS config: use plugin object form for compatibility (Vercel + Vitest)
 export default {
-  plugins: [tailwindcss],
+  plugins: {
+    '@tailwindcss/postcss': {},
+  },
 };

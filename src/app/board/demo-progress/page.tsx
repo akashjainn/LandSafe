@@ -9,8 +9,8 @@ export default function DemoProgressPage() {
   const { order, flights, setAdapter } = useFlightStore();
   useEffect(() => {
     const adapter = new MockAdapter();
-    setAdapter(adapter as any);
-    return () => { /* adapter cleanup handled in store */ };
+    setAdapter(adapter);
+    return () => { /* cleanup via store unsubscribe */ };
   }, [setAdapter]);
 
   return (
