@@ -1010,8 +1010,8 @@ export default function BoardPage() {
         ) : (
           <div className="space-y-6">
             {sortedDates.map((dateKey) => (
-              <Card key={dateKey} className="border-0 shadow-lg bg-white/80 backdrop-blur-sm transition-all duration-300 hover:shadow-xl">
-                <CardHeader className="pb-4 bg-gradient-to-r from-slate-800 to-blue-800 text-white rounded-t-lg">
+              <Card key={dateKey} className="border-0 shadow-lg bg-white/80 backdrop-blur-sm transition-all duration-300 hover:shadow-xl overflow-hidden">
+                <CardHeader className="pb-4 bg-gradient-to-r from-slate-800 to-blue-800 text-white">
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-3 text-xl font-semibold">
                       <Calendar className="w-5 h-5" />
@@ -1022,7 +1022,7 @@ export default function BoardPage() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                   {(() => {
                     const dateFlights = flightsByDate[dateKey];
                     const itineraries = buildItineraries(dateFlights);
