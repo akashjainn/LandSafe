@@ -28,15 +28,41 @@ function RealtimeProgressInline({ flightId }: { flightId: string }) {
   const percent = rt.progress?.percent ?? 0;
   const departed = rt.progress?.departed;
   const landed = rt.progress?.landed;
+  
+  // Choose progress bar color based on status
+  const getProgressColor = () => {
+    if (landed) return 'bg-emerald-500';
+    if (departed) return 'bg-blue-500';
+    return 'bg-slate-400';
+  };
+
   return (
-    <div className="mt-2 w-40 space-y-1">
-      <div className="h-2 rounded bg-slate-200 overflow-hidden" aria-label="progress" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
-        <div className="h-full bg-sky-500 transition-all" style={{ width: `${percent}%` }} />
+    <div className="mt-3 space-y-2">
+      {/* Status badges */}
+      <div className="flex items-center gap-1.5">
+        <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
+          departed ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-slate-50 text-slate-500 border border-slate-200'
+        }`}>
+          <div className={`w-1.5 h-1.5 rounded-full ${departed ? 'bg-green-500' : 'bg-slate-400'}`} />
+          Departed
+        </div>
+        <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
+          landed ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-50 text-slate-500 border border-slate-200'
+        }`}>
+          <div className={`w-1.5 h-1.5 rounded-full ${landed ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+          Landed
+        </div>
       </div>
-      <div className="flex gap-1 flex-wrap">
-        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${departed ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>Dep</span>
-        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${landed ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>Land</span>
-        <span className="text-[10px] text-slate-500 ml-1">{percent}%</span>
+      
+      {/* Progress bar with percentage */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-slate-600">Progress</span>
+          <span className="text-xs text-slate-500">{percent}%</span>
+        </div>
+        <div className="h-2 rounded-full bg-slate-200 overflow-hidden" aria-label="flight progress" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
+          <div className={`h-full transition-all duration-500 ease-out ${getProgressColor()}`} style={{ width: `${percent}%` }} />
+        </div>
       </div>
     </div>
   );
@@ -377,8 +403,8 @@ export default function BoardPage() {
                               </div>
 
                               {/* Route */}
-                              <div className="flex items-center gap-4">
-                                <div className="text-center">
+                              <div className="flex items-center gap-6">
+                                <div className="text-center min-w-[120px]">
                                   <div className="text-2xl font-bold text-slate-700">
                                     {(() => {
                                       const airport = formatAirportWithCity(flight.originIata);
@@ -393,16 +419,18 @@ export default function BoardPage() {
                                   <div className="text-xs text-slate-500 mt-1">
                                     {formatDateTime(flight.latestEstDep || flight.latestSchedDep, iataToIana(flight.originIata))}
                                   </div>
+                                </div>
+                                
+                                <div className="flex flex-col items-center justify-center min-w-[180px]">
+                                  <div className="flex items-center mb-2">
+                                    <div className="w-8 h-px bg-slate-300"></div>
+                                    <ArrowRight className="h-4 w-4 text-slate-400 mx-2" />
+                                    <div className="w-8 h-px bg-slate-300"></div>
+                                  </div>
                                   <RealtimeProgressInline flightId={flight.id} />
                                 </div>
                                 
-                                <div className="flex items-center">
-                                  <div className="w-12 h-px bg-slate-300"></div>
-                                  <ArrowRight className="h-4 w-4 text-slate-400 mx-2" />
-                                  <div className="w-12 h-px bg-slate-300"></div>
-                                </div>
-                                
-                                <div className="text-center">
+                                <div className="text-center min-w-[120px]">
                                   <div className="text-2xl font-bold text-slate-700">
                                     {(() => {
                                       const airport = formatAirportWithCity(flight.destIata);
