@@ -69,7 +69,7 @@ function RealtimeProgressInline({ flightId, flight }: { flightId: string; flight
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-600">Progress</span>
-              <span className="text-xs text-slate-500">{percent} %</span>
+              <span className="text-xs text-slate-500">{percent}%</span>
             </div>
             <div className="h-2 rounded-full bg-slate-200 overflow-hidden" aria-label="flight progress" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
               <div 
@@ -147,7 +147,7 @@ function RealtimeProgressInline({ flightId, flight }: { flightId: string; flight
       <div className="space-y-1">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-slate-600">Progress</span>
-          <span className="text-xs text-slate-500">{percent} %</span>
+          <span className="text-xs text-slate-500">{percent}%</span>
         </div>
         <div className="h-2 rounded-full bg-slate-200 overflow-hidden" aria-label="flight progress" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
           <div className={`h-full transition-all duration-500 ease-out ${getProgressColor()}`} style={{ width: `${percent}%` }} />
