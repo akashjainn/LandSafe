@@ -19,6 +19,7 @@ import { FlightStatusCode } from '@/lib/types';
 const prisma = getPrisma();
 const provider = new AeroDataProvider();
 
+
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params;
@@ -37,8 +38,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       statusDTO = cached.data;
     }
 
-    // Only hit provider if no cache or cache expired (we store TTL inside entry or compute on demand below)
-    if (!statusDTO || (cached && cached.fetchedAt + (cached.data._ttl || 0) < Date.now())) {
+  // Only hit provider if no cache or cache expired (we store TTL inside entry or compute on demand below)
+  if (!statusDTO || (cached && cached.fetchedAt + (cached.data._ttl || 0) < Date.now())) {
       // Check quota before making API call
       if (!canMakeApiCall()) {
         console.warn('Monthly API quota exceeded, blocking external call');
@@ -101,7 +102,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     });
 
     // Compute dynamic TTL and cache fresh response
-    if (!fromCache) {
+  if (!fromCache) {
       const depMs = statusDTO.schedDep ? new Date(statusDTO.schedDep).getTime() : undefined;
       const arrMs = statusDTO.schedArr ? new Date(statusDTO.schedArr).getTime() : undefined;
       const ttl = computeTTL({
@@ -129,7 +130,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
         flightNumber: flight.flightNumber,
         originIata: statusDTO.originIata || flight.originIata,
         destIata: statusDTO.destIata || flight.destIata,
-        status,
+  status,
         times: {
           schedDep: statusDTO.schedDep,
             schedArr: statusDTO.schedArr,
