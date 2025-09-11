@@ -178,40 +178,41 @@ export default function UploadPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
-      <div className="container mx-auto px-4 py-8 space-y-8">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 rounded-2xl shadow-xl text-white p-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div className="space-y-4">
-              <h1 className="text-4xl font-bold tracking-tight">Add Flights</h1>
-              <p className="text-blue-200 text-lg">Upload flight details for your reunion group</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <Button
-                onClick={downloadTemplate}
-                className="bg-white/10 hover:bg-white/20 border-white/20 text-white hover:text-white transition-all duration-200 shadow-lg"
-                size="lg"
-              >
-                <Download className="h-5 w-5 mr-2" />
-                Download Template
-              </Button>
+      <div className="container mx-auto px-4 py-8">
+        <div className="space-y-8">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 rounded-2xl shadow-xl text-white p-8">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              <div className="space-y-4">
+                <h1 className="text-4xl font-bold tracking-tight">Add Flights</h1>
+                <p className="text-blue-200 text-lg">Upload flight details for your reunion group</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <Button
+                  onClick={downloadTemplate}
+                  className="bg-white/10 hover:bg-white/20 border-white/20 text-white hover:text-white transition-all duration-200 shadow-lg"
+                  size="lg"
+                >
+                  <Download className="h-5 w-5 mr-2" />
+                  Download Template
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Upload Section */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* CSV Upload */}
-          <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
-            <CardHeader className="bg-gradient-to-r from-slate-800 to-blue-800 text-white rounded-t-lg">
-              <CardTitle className="flex items-center gap-3 text-xl">
-                <Upload className="h-6 w-6" />
-                Upload CSV File
-              </CardTitle>
-              <CardDescription className="text-blue-200">
-                Bulk upload multiple flights at once
-              </CardDescription>
-            </CardHeader>
+          {/* Upload Section */}
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* CSV Upload */}
+            <Card className="relative z-0 border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+              <CardHeader className="bg-gradient-to-r from-slate-800 to-blue-800 text-white rounded-t-lg">
+                <CardTitle className="flex items-center gap-3 text-xl">
+                  <Upload className="h-6 w-6" />
+                  Upload CSV File
+                </CardTitle>
+                <CardDescription className="text-blue-200">
+                  Bulk upload multiple flights at once
+                </CardDescription>
+              </CardHeader>
           <CardContent className="space-y-4">
             <div
               className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
@@ -250,7 +251,7 @@ export default function UploadPage() {
         </Card>
 
         {/* Manual Entry */}
-        <Card>
+        <Card className="relative z-0">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5" />
@@ -274,7 +275,7 @@ export default function UploadPage() {
       </div>
 
       {/* Flight Data Table */}
-      <Card>
+      <Card className="relative z-0">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Flight Details</CardTitle>
@@ -410,6 +411,7 @@ export default function UploadPage() {
           </div>
         </div>
       )}
+        </div>
       </div>
     </div>
   );
