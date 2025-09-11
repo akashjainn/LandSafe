@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+// removed unused Badge import
+// Card and CardContent are intentionally unused
 
 interface QuotaStatus {
   used: number;

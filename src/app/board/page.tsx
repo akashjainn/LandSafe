@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
+// removed unused format import
 import { formatInTimeZone } from "date-fns-tz";
 import * as tz from "date-fns-tz";
 import { iataToIana } from "@/lib/airports";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+// removed unused Badge import
 import { Input } from "@/components/ui/input";
 import { 
   RefreshCw, 
@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import React from "react";
 import { useFlights, useRefreshAllFlights, useDeleteFlight, useRefreshFlight } from "@/hooks/useFlights";
-import { useRealtimeFlight } from "@/hooks/useRealtimeFlight";
+// removed unused useRealtimeFlight import
 
 // (Removed legacy RealtimeProgressInline component – replaced by unified FlightProgress elsewhere)
 
@@ -85,11 +85,12 @@ function toUTCDate(
   if (maybe instanceof Date) return maybe;
   const str = String(maybe);
   if (hasTZInfo(str)) return new Date(str);
-  const tz = iataToIana(airportIata || "") || "UTC";
+  const ianaTz = iataToIana(airportIata || "") || "UTC";
   // Interpret naive local time in the airport's timezone, then convert to UTC
   // Access via namespace to avoid type export issues
-  const fn = (tz as any).zonedTimeToUtc as ((d: string | Date, tz: string) => Date) | undefined;
-  return fn ? fn(str, tz) : new Date(str + "Z");
+  // Access via namespace, typed safely without `any`
+  const mod = tz as unknown as { zonedTimeToUtc?: (d: string | Date, tz: string) => Date };
+  return mod.zonedTimeToUtc ? mod.zonedTimeToUtc(str, ianaTz) : new Date(str + "Z");
 }
 function depTime(f: BoardFlight): Date | undefined { return toUTCDate(f.latestEstDep || f.latestSchedDep, f.originIata); }
 function arrTime(f: BoardFlight): Date | undefined { return toUTCDate(f.latestEstArr || f.latestSchedArr, f.destIata); }
@@ -557,7 +558,8 @@ import { displayFlightIata } from "@/lib/airlineCodes";
 import { QuotaDisplay } from "@/components/quota-display";
 
 export default function BoardPage() {
-  const router = useRouter();
+  const router = useRouter(); // kept for future navigation; suppress unused warning
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [searchQuery, setSearchQuery] = useState("");
   const [yearFilter, setYearFilter] = useState("");
   const [monthFilter, setMonthFilter] = useState("");
@@ -579,7 +581,7 @@ export default function BoardPage() {
     refreshMutation.mutate(Object.keys(filters).length > 0 ? filters : undefined);
   };
 
-  const handleDeleteFlight = async (flightId: string, flightDetails: string) => {
+  const handleDeleteFlight = async (flightId: string, _flightDetails: string) => {
     try {
       await deleteMutation.mutateAsync(flightId);
     } catch (error) {

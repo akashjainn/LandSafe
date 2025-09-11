@@ -3,7 +3,7 @@ import { getPrisma } from "@/lib/db";
 import { parseCarrierFlightNumber } from "@/lib/types";
 import { AeroDataProvider } from "@/lib/providers/aerodata";
 import { statusFromDTO } from "@/lib/mappers";
-import { FlightStatusCode } from "@/lib/types";
+// removed unused FlightStatusCode import
 import { normalizeAirlineCode } from "@/lib/airlineCodes";
 import { normalizeFlight } from "@/lib/flightNormalize";
 import { iataToIana } from "@/lib/airports";
