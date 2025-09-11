@@ -1,5 +1,5 @@
 import { format, formatDistanceToNow } from "date-fns";
-import { Clock, MapPin, Plane, RefreshCw, Trash2 } from "lucide-react";
+import { Plane, RefreshCw, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/status-badge";
 import { ProviderBadge } from "@/components/provider-badge";
@@ -57,20 +57,13 @@ export function FlightCard({ flight, className }: FlightCardProps) {
     }
   };
 
-  // Fallback progress
-  const computeFallbackPercent = (): number => {
-    const dep = flight.latestSchedDep || flight.latestEstDep;
-    const arr = flight.latestSchedArr || flight.latestEstArr;
-    if (!dep || !arr) return 0;
-    const depMs = new Date(dep).getTime();
-    const arrMs = new Date(arr).getTime();
-    const now = Date.now();
-    if (isNaN(depMs) || isNaN(arrMs) || arrMs <= depMs) return 0;
-    if (now <= depMs) return 0;
-    if (now >= arrMs) return 100;
-    return Math.min(100, Math.max(0, Math.round(((now - depMs) / (arrMs - depMs)) * 100)));
-  };
-  const percent = flight.progress?.percent ?? computeFallbackPercent();
+    // Helper to normalize potential Date/string/null into ISO string
+    const toIso = (v?: Date | string | null): string | undefined => {
+      if (!v) return undefined;
+      const d = typeof v === 'string' ? new Date(v) : v;
+      if (isNaN(d.getTime())) return undefined;
+      return d.toISOString();
+    };
 
   const originInfo = flight.originIata ? formatAirportWithCity(flight.originIata) : undefined;
   const destInfo = flight.destIata ? formatAirportWithCity(flight.destIata) : undefined;
@@ -118,10 +111,10 @@ export function FlightCard({ flight, className }: FlightCardProps) {
           </div>
           <div className="mt-2 w-full max-w-md min-w-0">
             <FlightProgress
-              schedDep={flight.latestSchedDep instanceof Date ? flight.latestSchedDep.toISOString() : (flight.latestSchedDep || undefined) as any}
-              estArr={flight.latestEstArr instanceof Date ? flight.latestEstArr.toISOString() : (flight.latestEstArr || flight.latestSchedArr || undefined) as any}
-              actDep={undefined /* placeholder: map to actual dep when available */}
-              actArr={undefined /* placeholder: map to actual arr when available */}
+              schedDep={toIso(flight.latestSchedDep) || toIso(flight.latestEstDep)}
+              estArr={toIso(flight.latestEstArr) || toIso(flight.latestSchedArr)}
+              actDep={toIso(null)}
+              actArr={toIso(null)}
               status={flight.latestStatus}
             />
           </div>

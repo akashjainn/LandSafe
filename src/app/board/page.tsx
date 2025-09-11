@@ -4,9 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
-import { iataToIana, formatAirportWithCity } from "@/lib/airports";
+import { iataToIana } from "@/lib/airports";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { 
@@ -16,7 +16,6 @@ import {
   MapPin,
   Search,
   Filter,
-  Trash2,
   ArrowRight,
   Clock,
   User,
@@ -28,180 +27,7 @@ import React from "react";
 import { useFlights, useRefreshAllFlights, useDeleteFlight, useRefreshFlight } from "@/hooks/useFlights";
 import { useRealtimeFlight } from "@/hooks/useRealtimeFlight";
 
-function RealtimeProgressInline({ flightId, flight }: { flightId: string; flight?: Flight }) {
-  const { data: rt, error } = useRealtimeFlight(flightId, 300000); // Poll every 5 minutes
-  
-  // If we have an error or no data but have flight data, try to compute fallback progress
-  if ((!rt || error) && flight) {
-    const now = new Date();
-    const depTime = flight.latestEstDep || flight.latestSchedDep;
-    const arrTime = flight.latestEstArr || flight.latestSchedArr;
-    
-    if (depTime && arrTime) {
-      const depMs = new Date(depTime).getTime();
-      const arrMs = new Date(arrTime).getTime();
-      const nowMs = now.getTime();
-      
-      let percent = 0;
-      let departed = false;
-      let landed = false;
-      
-      // Debug: Log the times to see what we're working with
-      console.log(`Fallback calc for flight ${flightId}:`, {
-        depTime: depTime.toString(),
-        arrTime: arrTime.toString(),
-        now: now.toString(),
-        depMs,
-        arrMs,
-        nowMs,
-        depPassed: nowMs >= depMs,
-        arrPassed: nowMs >= arrMs
-      });
-      
-      if (nowMs >= arrMs) {
-        percent = 100;
-        departed = true;
-        landed = true;
-      } else if (nowMs >= depMs) {
-        percent = Math.round(((nowMs - depMs) / (arrMs - depMs)) * 100);
-        departed = true;
-      }
-      
-      console.log(`Fallback result for ${flightId}:`, { percent, departed, landed });
-      
-      return (
-        <div className="mt-3 space-y-2">
-          {/* Status badge */}
-          {(departed || landed) && (
-            <div className="flex justify-center">
-              <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                landed 
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                  : 'bg-green-50 text-green-700 border border-green-200'
-              }`}>
-                <div className={`w-1.5 h-1.5 rounded-full ${landed ? 'bg-emerald-500' : 'bg-green-500'}`} />
-                {landed ? 'Landed' : 'Departed'}
-              </div>
-            </div>
-          )}
-          
-          <div className="space-y-1">
-            <div className="flex items-center">
-              <span className="text-xs font-medium text-slate-600">Progress</span>
-              <span className="text-xs text-slate-500 ml-auto">{percent}%</span>
-            </div>
-            <div className="h-2 rounded-full bg-slate-200 overflow-hidden" aria-label="flight progress" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
-              <div 
-                className={`h-full transition-all duration-500 ease-out ${
-                  landed ? 'bg-emerald-500' : departed ? 'bg-green-500' : 'bg-slate-400'
-                }`} 
-                style={{ width: `${percent}%` }} 
-              />
-            </div>
-          </div>
-        </div>
-      );
-    }
-    
-    // No usable time data
-    return (
-      <div className="mt-3 space-y-2">
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Progress</span>
-            <span className="text-xs text-slate-400">—</span>
-          </div>
-          <div className="h-2 rounded-full bg-slate-200 overflow-hidden" aria-label="flight progress unavailable">
-            <div className="h-full bg-slate-300 w-0" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-  
-  if (!rt) return null; // This shouldn't happen due to above checks, but for type safety
-  
-  let percent = rt.progress?.percent ?? 0;
-  let departed = rt.progress?.departed;
-  let landed = rt.progress?.landed;
-  
-  // If the realtime API returned data but no departure/landing status,
-  // and percent is 0, it's likely all flights are in the future
-  if (percent === 0 && !departed && !landed && flight) {
-    // Use stored flight times as additional check
-    const now = new Date();
-    const depTime = flight.latestEstDep || flight.latestSchedDep;
-    const arrTime = flight.latestEstArr || flight.latestSchedArr;
-    
-    if (depTime && arrTime) {
-      const depMs = new Date(depTime).getTime();
-      const arrMs = new Date(arrTime).getTime();
-      const nowMs = now.getTime();
-      
-      if (nowMs >= arrMs) {
-        percent = 100;
-        departed = true;
-        landed = true;
-      } else if (nowMs >= depMs) {
-        percent = Math.round(((nowMs - depMs) / (arrMs - depMs)) * 100);
-        departed = true;
-      }
-    }
-  }
-  
-  // Choose progress bar color based on status
-  const getProgressColor = () => {
-    if (landed) return 'bg-emerald-500';
-    if (departed) return 'bg-green-500';
-    return 'bg-slate-400';
-  };
-
-  // Determine what status badge to show
-  const getStatusBadge = () => {
-    if (landed) {
-      return (
-        <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-          Landed
-        </div>
-      );
-    }
-    if (departed) {
-      return (
-        <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-          <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-          Departed
-        </div>
-      );
-    }
-    return null;
-  };
-
-  return (
-    <div className="mt-3 space-y-2">
-      {/* Status badge - only show if departed or landed */}
-      {(() => {
-        const statusBadge = getStatusBadge();
-        return statusBadge && (
-          <div className="flex justify-center">
-            {statusBadge}
-          </div>
-        );
-      })()}
-      
-      {/* Progress bar with percentage */}
-      <div className="space-y-1">
-        <div className="flex items-center">
-          <span className="text-xs font-medium text-slate-600">Progress</span>
-          <span className="text-xs text-slate-500 ml-auto">{percent}%</span>
-        </div>
-        <div className="h-2 rounded-full bg-slate-200 overflow-hidden" aria-label="flight progress" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
-          <div className={`h-full transition-all duration-500 ease-out ${getProgressColor()}`} style={{ width: `${percent}%` }} />
-        </div>
-      </div>
-    </div>
-  );
-}
+// (Removed legacy RealtimeProgressInline component – replaced by unified FlightProgress elsewhere)
 
 // ---------------- Journey-based Connecting Flights ----------------
 // New UX pattern: Journey header + vertical timeline with legs
@@ -721,16 +547,7 @@ export default function BoardPage() {
     setDayFilter("");
   };
 
-  const formatDateTime = (date?: Date | string | null, tz?: string) => {
-    if (!date) return "—";
-    try {
-      const d = typeof date === 'string' ? new Date(date) : date;
-      if (tz) return formatInTimeZone(d, tz, "EEE, MMM d, h:mm a");
-      return format(d, "EEE, MMM d, h:mm a");
-    } catch {
-      return "—";
-    }
-  };
+  // removed unused formatDateTime helper (handled elsewhere)
 
   const formatDeltaLabel = (mins: number | null): string | null => {
     if (mins === null) return null;
@@ -749,47 +566,9 @@ export default function BoardPage() {
     return Math.round((ref.getTime() - s.getTime()) / 60000);
   };
 
-  const getStatusBadge = (flight: Flight) => {
-    const status = flight.latestStatus;
-    if (!status) return null;
+  // removed unused getStatusBadge helper (FlightCard handles status display)
 
-    const color = getStatusColor(status);
-    // Prefer arrival deltas if available, else departure
-    const arrDelta = computeDelayMinutes(flight.latestSchedArr, flight.latestEstArr, null);
-    const depDelta = computeDelayMinutes(flight.latestSchedDep, flight.latestEstDep, null);
-    const delta = arrDelta !== null ? arrDelta : depDelta;
-    const derived = formatDeltaLabel(delta);
-    const base = getStatusLabel(status);
-    const label = derived ?? base;
-    
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      blue: "default",
-      indigo: "secondary", 
-      green: "secondary",
-      emerald: "secondary",
-      amber: "secondary",
-      red: "destructive",
-      orange: "secondary",
-      gray: "outline"
-    };
-
-  return (
-      <Badge variant={variants[color] || "outline"} className={`bg-${color}-50 text-${color}-700 border-${color}-200`}>
-    {label}
-      </Badge>
-    );
-  };
-
-  const handleCardNavigate = (e: React.MouseEvent | React.KeyboardEvent, id: string) => {
-    const target = e.target as HTMLElement;
-    // Ignore clicks originating from interactive elements
-    if (target.closest('button, a, [role="button"], [data-no-nav]')) return;
-    if ('key' in e) {
-      if (e.key !== 'Enter' && e.key !== ' ') return;
-      e.preventDefault();
-    }
-    router.push(`/flight/${id}`);
-  };
+  // removed unused handleCardNavigate (navigation done via explicit links)
 
   // Filter flights based on search query
   const filteredFlights = flights.filter(flight => {
