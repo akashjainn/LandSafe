@@ -104,19 +104,21 @@ export function FlightCard({ flight, className }: FlightCardProps) {
 
         {/* Middle: Route + Progress */}
         <div className="col-span-12 sm:col-span-6 flex flex-col items-center justify-center min-w-0">
-          <div className="flex items-center gap-3 w-full max-w-md">
-            <div className="flex-1 h-0.5 bg-muted rounded" />
-            <Plane className="w-5 h-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <div className="flex-1 h-0.5 bg-muted rounded" />
-          </div>
-          <div className="mt-2 w-full max-w-md min-w-0">
-            <FlightProgress
-              schedDep={toIso(flight.latestSchedDep) || toIso(flight.latestEstDep)}
-              estArr={toIso(flight.latestEstArr) || toIso(flight.latestSchedArr)}
-              actDep={toIso(null)}
-              actArr={toIso(null)}
-              status={flight.latestStatus}
-            />
+          <div className="w-full min-w-0 flex flex-col items-center">
+            <div className="flex items-center gap-3 w-full min-w-0 max-w-[640px]">
+              <div className="flex-1 h-0.5 bg-muted rounded" />
+              <Plane className="w-5 h-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <div className="flex-1 h-0.5 bg-muted rounded" />
+            </div>
+            <div className="mt-2 w-full min-w-0 max-w-[640px]">
+              <FlightProgress
+                schedDep={toIso(flight.latestSchedDep) || toIso(flight.latestEstDep)}
+                estArr={toIso(flight.latestEstArr) || toIso(flight.latestSchedArr)}
+                actDep={toIso(null)}
+                actArr={toIso(null)}
+                status={flight.latestStatus}
+              />
+            </div>
           </div>
         </div>
 

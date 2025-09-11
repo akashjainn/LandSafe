@@ -33,12 +33,22 @@ export function FlightProgress(props: FlightProgressProps) {
 
   return (
     <div className={props.className}>
-      <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-        <span>Progress</span>
-        <span>{value}%</span>
-      </div>
-      <div className="h-1.5 bg-muted rounded overflow-hidden" role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={100}>
-        <div className="h-full bg-primary transition-all duration-300 ease-out" style={{ width: `${value}%` }} />
+      <div className="flex items-center gap-2 min-w-0 w-full max-w-[520px]" aria-label="Flight progress row">
+        <span className="text-xs text-muted-foreground shrink-0">Progress</span>
+        <div
+          className="relative h-2 grow rounded-full bg-muted overflow-hidden"
+          role="progressbar"
+          aria-valuenow={value}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Flight progress percentage"
+        >
+          <div
+            className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all duration-300 ease-out"
+            style={{ width: `${value}%` }}
+          />
+        </div>
+        <span className="text-xs tabular-nums shrink-0 w-10 text-right">{value}%</span>
       </div>
     </div>
   );
