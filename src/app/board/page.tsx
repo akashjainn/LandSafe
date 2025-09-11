@@ -220,6 +220,113 @@ function buildItineraries(flights: BoardFlight[]): Itinerary[] {
   return itineraries;
 }
 
+// -------- Round-trip pairing (outbound + inbound) --------
+type RoundTrip = {
+  key: string;
+  outbound: Itinerary;
+  inbound: Itinerary;
+  daysAway: number;
+};
+
+function firstDep(it: Itinerary): Date {
+  return it.legs[0].dep.timeSched;
+}
+function lastArr(it: Itinerary): Date {
+  const last = it.legs[it.legs.length - 1];
+  return last.arr.timeEst || last.arr.timeSched;
+}
+
+function defaultSameCity(iata: string): string {
+  const m: Record<string, string> = {
+    JFK: "NYC", LGA: "NYC", EWR: "NYC",
+    NRT: "TYO", HND: "TYO",
+    DCA: "WAS", IAD: "WAS", BWI: "WAS",
+    ORD: "CHI", MDW: "CHI",
+    LHR: "LON", LGW: "LON", LCY: "LON", STN: "LON", LTN: "LON",
+  };
+  return m[iata] ?? iata;
+}
+
+function pairRoundTrips(
+  trips: Itinerary[],
+  opts: { minReturnHours?: number; maxReturnDays?: number; sameCity?: (iata: string) => string } = {}
+): { pairs: RoundTrip[]; singles: Itinerary[] } {
+  const minReturnHours = opts.minReturnHours ?? 6;
+  const maxReturnDays = opts.maxReturnDays ?? 90;
+  const toCity = opts.sameCity ?? defaultSameCity;
+
+  const sorted = [...trips].sort((a, b) => firstDep(a).getTime() - firstDep(b).getTime());
+  const used = new Set<string>();
+  const pairs: RoundTrip[] = [];
+  const singles: Itinerary[] = [];
+
+  for (let i = 0; i < sorted.length; i++) {
+    const out = sorted[i];
+    if (used.has(out.id)) continue;
+
+    const A = toCity(out.origin);
+    const B = toCity(out.destination);
+    const outArr = lastArr(out).getTime();
+
+    let best: { idx: number; score: number } | null = null;
+    for (let j = i + 1; j < sorted.length; j++) {
+      const ret = sorted[j];
+      if (used.has(ret.id)) continue;
+
+      const C = toCity(ret.origin);
+      const D = toCity(ret.destination);
+      const retDep = firstDep(ret).getTime();
+
+      const hoursGap = (retDep - outArr) / 3_600_000;
+      const daysGap = hoursGap / 24;
+      const endpointsMatch = (B === C) && (A === D);
+      const timeOK = hoursGap >= minReturnHours && daysGap <= maxReturnDays;
+
+      if (endpointsMatch && timeOK) {
+        const score = 10 - Math.abs(hoursGap - 24); // prefer closer-to-24h returns
+        if (!best || score > best.score) best = { idx: j, score };
+      }
+    }
+
+    if (best) {
+      const ret = sorted[best.idx];
+      used.add(out.id); used.add(ret.id);
+      pairs.push({
+        key: `${out.id}|${ret.id}`,
+        outbound: out,
+        inbound: ret,
+        daysAway: Math.round((firstDep(ret).getTime() - lastArr(out).getTime()) / 86_400_000),
+      });
+    } else {
+      used.add(out.id);
+      singles.push(out);
+    }
+  }
+
+  for (const t of sorted) if (!used.has(t.id)) singles.push(t);
+  return { pairs, singles };
+}
+
+function RoundTripCard({ rt }: { rt: RoundTrip }) {
+  return (
+    <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+      <CardContent className="p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="text-lg font-semibold text-slate-800">
+            {rt.outbound.origin} ⇄ {rt.inbound.destination}
+          </div>
+          <div className="text-sm text-slate-500">{rt.daysAway} day{rt.daysAway === 1 ? '' : 's'} apart</div>
+        </div>
+        <div className="space-y-3">
+          <JourneyCard itinerary={rt.outbound} />
+          <div className="text-center text-xs text-slate-500">return</div>
+          <JourneyCard itinerary={rt.inbound} />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function formatHm(d?: Date) { if (!d) return '—'; return d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit',hour12:true}); }
 
 function calculateOverallProgress(itinerary: Itinerary): number {
@@ -858,12 +965,19 @@ export default function BoardPage() {
                     const dateFlights = flightsByDate[dateKey];
                     const itineraries = buildItineraries(dateFlights);
                     const multiLegItineraries = itineraries.filter(it => it.legs.length > 1);
-                    const groupedIds = new Set(multiLegItineraries.flatMap(it => it.legs.map(leg => leg.id)));
+                    // Pair round trips among multi-leg itineraries
+                    const { pairs: roundTrips, singles: unpairedTrips } = pairRoundTrips(multiLegItineraries);
+                    const allGroupedTrips = [...unpairedTrips, ...roundTrips.flatMap(rt => [rt.outbound, rt.inbound])];
+                    const groupedIds = new Set(allGroupedTrips.flatMap(it => it.legs.map(leg => leg.id)));
                     const singles = dateFlights.filter(f => !groupedIds.has(f.id));
                     return (
                       <div className="space-y-6">
-                        {/* Journey Cards */}
-                        {multiLegItineraries.map(itinerary => (
+                        {/* Round Trip Cards */}
+                        {roundTrips.map(rt => (
+                          <RoundTripCard key={rt.key} rt={rt} />
+                        ))}
+                        {/* Unpaired Journey Cards */}
+                        {unpairedTrips.map(itinerary => (
                           <JourneyCard key={itinerary.id} itinerary={itinerary} />
                         ))}
                         {/* Single Flights */}
