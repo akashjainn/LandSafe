@@ -14,7 +14,7 @@ export const FlightRow: React.FC<Props> = ({ flight }) => {
       <div className="col-span-4"><FlightProgressBar flight={flight} /></div>
       <div className="col-span-2"><StatusPill flight={flight} /></div>
       <div className="col-span-2 text-right pr-2">
-        {flight.progress?.eta && <span className="text-slate-500">ETA {new Date(flight.progress.eta).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}</span>}
+        {flight.progress?.eta && <span className="text-slate-500">ETA {new Date(flight.progress.eta).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit',hour12:true})}</span>}
       </div>
     </div>
   );

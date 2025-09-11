@@ -41,7 +41,7 @@ export function FlightCard({ flight, className }: FlightCardProps) {
     if (!date) return "—";
     try {
       const d = typeof date === "string" ? new Date(date) : date;
-      return format(d, "HH:mm");
+      return format(d, "h:mm a");
     } catch {
       return "—";
     }
@@ -121,7 +121,10 @@ export function FlightCard({ flight, className }: FlightCardProps) {
               <span>{percent}%</span>
             </div>
             <div className="h-1.5 bg-muted rounded overflow-hidden" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
-              <div className="h-full bg-primary transition-all" style={{ width: `${percent}%` }} />
+              <div 
+                className="h-full bg-primary transition-all duration-300 ease-out" 
+                style={{ width: `${Math.max(0, Math.min(100, percent))}%` }} 
+              />
             </div>
           </div>
         </div>

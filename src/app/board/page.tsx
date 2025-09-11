@@ -343,7 +343,7 @@ function buildItineraries(flights: BoardFlight[]): Itinerary[] {
   return itineraries;
 }
 
-function formatHm(d?: Date) { if (!d) return '—'; return d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'}); }
+function formatHm(d?: Date) { if (!d) return '—'; return d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit',hour12:true}); }
 
 function calculateOverallProgress(itinerary: Itinerary): number {
   const now = new Date();

@@ -59,5 +59,5 @@ function buildTooltip(f: Flight): string {
   return lines.join("\n");
 }
 function formatLocal(iso: string) {
-  try { return new Date(iso).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"}); } catch { return iso; }
+  try { return new Date(iso).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit",hour12:true}); } catch { return iso; }
 }

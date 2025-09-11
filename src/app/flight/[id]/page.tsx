@@ -66,7 +66,7 @@ export default function FlightDetailPage() {
         <span className={cn('px-2 py-0.5 rounded text-xs font-medium', rt.progress.departed ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500')}>Departed</span>
         <span className={cn('px-2 py-0.5 rounded text-xs font-medium', rt.progress.landed ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500')}>Landed</span>
         {rt.status && <span className="ml-1 text-xs text-slate-500">Status: {rt.status}</span>}
-        {rt.progress.eta && <span className="text-xs text-slate-500">ETA {new Date(rt.progress.eta).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}</span>}
+        {rt.progress.eta && <span className="text-xs text-slate-500">ETA {new Date(rt.progress.eta).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit',hour12:true})}</span>}
       </div>
 
       <div>
@@ -91,9 +91,9 @@ export default function FlightDetailPage() {
             <li>Percent: {rt.progress.percent}% (time)</li>
             <li>Departed: {rt.progress.departed ? 'Yes' : 'No'}</li>
             <li>Landed: {rt.progress.landed ? 'Yes' : 'No'}</li>
-            {rt.progress.eta && <li>ETA: {new Date(rt.progress.eta).toLocaleTimeString()}</li>}
-            {rt.times?.actDep && <li>Actual Off: {new Date(rt.times.actDep).toLocaleTimeString()}</li>}
-            {rt.times?.actArr && <li>Actual On: {new Date(rt.times.actArr).toLocaleTimeString()}</li>}
+            {rt.progress.eta && <li>ETA: {new Date(rt.progress.eta).toLocaleTimeString(undefined,{hour12:true})}</li>}
+            {rt.times?.actDep && <li>Actual Off: {new Date(rt.times.actDep).toLocaleTimeString(undefined,{hour12:true})}</li>}
+            {rt.times?.actArr && <li>Actual On: {new Date(rt.times.actArr).toLocaleTimeString(undefined,{hour12:true})}</li>}
           </ul>
         </div>
         <div className="p-3 rounded border bg-white/50">
