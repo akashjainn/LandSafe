@@ -6,6 +6,16 @@ import { ProviderBadge } from "@/components/provider-badge";
 import Link from "next/link";
 import { formatAirportWithCity } from "@/lib/airports";
 import { FlightProgress } from "@/components/FlightProgress";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 // Optional real-time progress shape (mirrors realtime Flight.progress)
 interface OptionalProgress { percent?: number }
@@ -40,6 +50,8 @@ interface FlightCardProps {
 }
 
 export function FlightCard({ flight, className, onDelete, onRefresh }: FlightCardProps) {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
   const formatTime = (date?: Date | string | null) => {
     if (!date) return "—";
     try {
@@ -163,9 +175,7 @@ export function FlightCard({ flight, className, onDelete, onRefresh }: FlightCar
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (confirm(`Delete flight ${flight.airline}${flight.flightNumber}?`)) {
-                  onDelete?.(flight.id);
-                }
+                setShowDeleteDialog(true);
               }}
               className="p-2 rounded-lg hover:bg-muted text-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500"
               aria-label="Delete"
@@ -181,6 +191,46 @@ export function FlightCard({ flight, className, onDelete, onRefresh }: FlightCar
         </div>
       </div>
       <span className="sr-only">Last updated {getLastUpdated()}</span>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Flight</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete flight {flight.airline}{flight.flightNumber}?
+              <br />
+              <span className="text-sm text-muted-foreground mt-2 block">
+                {flight.originIata} → {flight.destIata}
+              </span>
+              {flight.passengerName && (
+                <span className="text-sm text-muted-foreground block">
+                  Passenger: {flight.passengerName}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                onDelete?.(flight.id);
+                setShowDeleteDialog(false);
+              }}
+              className="w-full sm:w-auto"
+            >
+              Delete Flight
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Link>
   );
 }
