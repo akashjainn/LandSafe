@@ -7,15 +7,7 @@ import Link from "next/link";
 import { formatAirportWithCity } from "@/lib/airports";
 import { FlightProgress } from "@/components/FlightProgress";
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { DeleteFlightDialog } from "@/components/DeleteFlightDialog";
 
 // Optional real-time progress shape (mirrors realtime Flight.progress)
 interface OptionalProgress { percent?: number }
@@ -193,44 +185,18 @@ export function FlightCard({ flight, className, onDelete, onRefresh }: FlightCar
       <span className="sr-only">Last updated {getLastUpdated()}</span>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Delete Flight</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete flight {flight.airline}{flight.flightNumber}?
-              <br />
-              <span className="text-sm text-muted-foreground mt-2 block">
-                {flight.originIata} → {flight.destIata}
-              </span>
-              {flight.passengerName && (
-                <span className="text-sm text-muted-foreground block">
-                  Passenger: {flight.passengerName}
-                </span>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteDialog(false)}
-              className="w-full sm:w-auto"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                onDelete?.(flight.id);
-                setShowDeleteDialog(false);
-              }}
-              className="w-full sm:w-auto"
-            >
-              Delete Flight
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteFlightDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        flight={{
+          number: flight.flightNumber,
+          airline: flight.airline,
+          from: flight.originIata || "—",
+          to: flight.destIata || "—",
+          pax: flight.passengerName,
+        }}
+        onConfirm={() => onDelete?.(flight.id)}
+      />
     </Link>
   );
 }
