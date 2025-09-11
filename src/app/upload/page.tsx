@@ -203,17 +203,17 @@ export default function UploadPage() {
           {/* Upload Section */}
           <div className="grid md:grid-cols-2 gap-6">
             {/* CSV Upload */}
-            <Card className="relative z-0 border-0 shadow-lg bg-white/80 backdrop-blur-sm">
-              <CardHeader className="bg-gradient-to-r from-slate-800 to-blue-800 text-white rounded-t-lg">
-                <CardTitle className="flex items-center gap-3 text-xl">
+            <Card className="relative z-0 border-0 shadow-lg bg-white/80 backdrop-blur-sm overflow-hidden">
+              <div className="bg-gradient-to-r from-slate-800 to-blue-800 text-white px-6 py-4">
+                <div className="flex items-center gap-3 text-xl font-semibold mb-2">
                   <Upload className="h-6 w-6" />
                   Upload CSV File
-                </CardTitle>
-                <CardDescription className="text-blue-200">
+                </div>
+                <p className="text-blue-200 text-sm">
                   Bulk upload multiple flights at once
-                </CardDescription>
-              </CardHeader>
-          <CardContent className="space-y-4">
+                </p>
+              </div>
+          <CardContent className="space-y-4 p-6">
             <div
               className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                 isDragOver 
@@ -251,17 +251,17 @@ export default function UploadPage() {
         </Card>
 
         {/* Manual Entry */}
-        <Card className="relative z-0">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <Card className="relative z-0 border-0 shadow-lg bg-white/80 backdrop-blur-sm overflow-hidden">
+          <div className="bg-gradient-to-r from-slate-800 to-blue-800 text-white px-6 py-4">
+            <div className="flex items-center gap-2 text-xl font-semibold mb-2">
               <Plus className="h-5 w-5" />
               Manual Entry
-            </CardTitle>
-            <CardDescription>
+            </div>
+            <p className="text-blue-200 text-sm">
               Add flights one by one manually
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </p>
+          </div>
+          <CardContent className="space-y-4 p-6">
             <div className="space-y-4 text-sm text-gray-600">
               <p>Preferred CSV format (airports auto-fill):</p>
               <div className="bg-gray-50 p-3 rounded font-mono text-xs">
@@ -275,17 +275,21 @@ export default function UploadPage() {
       </div>
 
       {/* Flight Data Table */}
-      <Card className="relative z-0">
-        <CardHeader>
+      <Card className="relative z-0 border-0 shadow-lg bg-white/80 backdrop-blur-sm overflow-hidden">
+        <div className="bg-gradient-to-r from-slate-800 to-blue-800 text-white px-6 py-4">
           <div className="flex items-center justify-between">
-            <CardTitle>Flight Details</CardTitle>
-            <Button onClick={addRow} variant="outline" size="sm">
+            <h3 className="text-xl font-semibold">Flight Details</h3>
+            <Button 
+              onClick={addRow} 
+              className="bg-white/10 hover:bg-white/20 border-white/20 text-white hover:text-white transition-all duration-200" 
+              size="sm"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Add Row
             </Button>
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <CardContent className="p-6">
           {flightRows.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               No flights added yet. Upload a CSV or add manually.

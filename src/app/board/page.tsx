@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
+import * as tz from "date-fns-tz";
 import { iataToIana } from "@/lib/airports";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,7 +33,11 @@ import { useRealtimeFlight } from "@/hooks/useRealtimeFlight";
 // ---------------- Journey-based Connecting Flights ----------------
 // New UX pattern: Journey header + vertical timeline with legs
 const MAX_CONNECTION_HOURS = 8;
-type BoardFlight = Flight; // alias for clarity
+// Extend Flight with optional manual grouping and traveler hint for future use
+type BoardFlight = Flight & {
+  connectionGroupId?: string | null;
+  traveler?: string | null;
+};
 
 type FlightLeg = {
   id: string;
@@ -67,17 +72,37 @@ type Itinerary = {
   destination: string;
 }
 
-function toDate(maybe: Date | string | null | undefined): Date | undefined {
-  if (!maybe) return undefined; return typeof maybe === 'string' ? new Date(maybe) : maybe;
+// Normalize timestamps to UTC instants for reliable layover math.
+// If a string lacks timezone info, interpret in the airport's local IANA zone and convert to UTC.
+function hasTZInfo(s: string) {
+  return /[zZ]$|[+-]\d{2}:?\d{2}$/.test(s);
 }
-function depTime(f: BoardFlight): Date | undefined { return toDate(f.latestEstDep || f.latestSchedDep); }
-function arrTime(f: BoardFlight): Date | undefined { return toDate(f.latestEstArr || f.latestSchedArr); }
+function toUTCDate(
+  maybe: Date | string | null | undefined,
+  airportIata: string | null | undefined
+): Date | undefined {
+  if (!maybe) return undefined;
+  if (maybe instanceof Date) return maybe;
+  const str = String(maybe);
+  if (hasTZInfo(str)) return new Date(str);
+  const tz = iataToIana(airportIata || "") || "UTC";
+  // Interpret naive local time in the airport's timezone, then convert to UTC
+  // Access via namespace to avoid type export issues
+  const fn = (tz as any).zonedTimeToUtc as ((d: string | Date, tz: string) => Date) | undefined;
+  return fn ? fn(str, tz) : new Date(str + "Z");
+}
+function depTime(f: BoardFlight): Date | undefined { return toUTCDate(f.latestEstDep || f.latestSchedDep, f.originIata); }
+function arrTime(f: BoardFlight): Date | undefined { return toUTCDate(f.latestEstArr || f.latestSchedArr, f.destIata); }
 
 function flightToLeg(flight: BoardFlight): FlightLeg {
-  const depScheduled = toDate(flight.latestSchedDep);
-  const depActual = toDate(flight.latestEstDep);
-  const arrScheduled = toDate(flight.latestSchedArr);
-  const arrEstimated = toDate(flight.latestEstArr);
+  // Simple parser for display; layover math uses UTC-normalized helpers above
+  function toDateSimple(maybe: Date | string | null | undefined): Date | undefined {
+    if (!maybe) return undefined; return typeof maybe === 'string' ? new Date(maybe) : maybe;
+  }
+  const depScheduled = toDateSimple(flight.latestSchedDep);
+  const depActual = toDateSimple(flight.latestEstDep);
+  const arrScheduled = toDateSimple(flight.latestSchedArr);
+  const arrEstimated = toDateSimple(flight.latestEstArr);
   
   // Map flight status to our enum
   const mapStatus = (status?: string): FlightLeg['status'] => {
@@ -121,6 +146,31 @@ function buildItineraries(flights: BoardFlight[]): Itinerary[] {
   const byId: Record<string, BoardFlight> = Object.fromEntries(flights.map(f=>[f.id,f]));
   const itineraries: Itinerary[] = [];
   const flightsSorted = [...flights].sort((a,b) => (depTime(a)?.getTime()||0) - (depTime(b)?.getTime()||0));
+
+  // 0) Respect explicit manual grouping when provided via connectionGroupId
+  const explicitGroups = new Map<string, BoardFlight[]>();
+  for (const f of flightsSorted) {
+    if (f.connectionGroupId) {
+      const k = f.connectionGroupId;
+      if (!explicitGroups.has(k)) explicitGroups.set(k, []);
+      explicitGroups.get(k)!.push(f);
+    }
+  }
+  for (const [, list] of explicitGroups) {
+    list.sort((a,b)=> (depTime(a)?.getTime()||0) - (depTime(b)?.getTime()||0));
+    list.forEach(f=> remaining.delete(f.id));
+    const legs = list.map(flightToLeg);
+    const firstDep = legs[0].dep.timeSched;
+    const lastArr = legs[legs.length-1].arr.timeEst || legs[legs.length-1].arr.timeSched;
+    const totalDurationMin = Math.max(0, Math.round((lastArr.getTime() - firstDep.getTime()) / 60000));
+    itineraries.push({
+      id: list.map(l=>l.id).join('_'),
+      legs,
+      totalDurationMin,
+      origin: legs[0].dep.iata,
+      destination: legs[legs.length-1].arr.iata,
+    });
+  }
   
   for (const f of flightsSorted) {
     if (!remaining.has(f.id)) continue;
@@ -128,7 +178,7 @@ function buildItineraries(flights: BoardFlight[]): Itinerary[] {
     remaining.delete(f.id);
     let last = f;
     
-    // try to extend forward greedily
+  // try to extend forward greedily (UTC-normalized times)
     while (true) {
       const lastArr = arrTime(last);
       if (!lastArr || !last.destIata) break;
