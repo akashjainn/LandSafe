@@ -819,24 +819,29 @@ export default function BoardPage() {
                         {/* Single Flights */}
                         <div className="space-y-4">
                           {singles.map(flight => (
-                            <FlightCard key={flight.id} flight={{
-                              id: flight.id,
-                              flightNumber: flight.flightNumber,
-                              airline: flight.carrierIata,
-                              originIata: flight.originIata || undefined,
-                              destIata: flight.destIata || undefined,
-                              latestSchedDep: flight.latestSchedDep || undefined,
-                              latestSchedArr: flight.latestSchedArr || undefined,
-                              latestEstDep: flight.latestEstDep || undefined,
-                              latestEstArr: flight.latestEstArr || undefined,
-                              latestStatus: flight.latestStatus,
-                              gate: flight.latestGateDep,
-                              terminal: flight.latestTerminalDep || undefined,
-                              updatedAt: flight.serviceDate,
-                              originTerminal: flight.latestTerminalDep || undefined,
-                              destTerminal: flight.latestTerminalArr || undefined,
-                              passengerName: flight.notes || undefined,
-                            }} />
+                            <FlightCard 
+                              key={flight.id} 
+                              flight={{
+                                id: flight.id,
+                                flightNumber: flight.flightNumber,
+                                airline: flight.carrierIata,
+                                originIata: flight.originIata || undefined,
+                                destIata: flight.destIata || undefined,
+                                latestSchedDep: flight.latestSchedDep || undefined,
+                                latestSchedArr: flight.latestSchedArr || undefined,
+                                latestEstDep: flight.latestEstDep || undefined,
+                                latestEstArr: flight.latestEstArr || undefined,
+                                latestStatus: flight.latestStatus,
+                                gate: flight.latestGateDep,
+                                terminal: flight.latestTerminalDep || undefined,
+                                updatedAt: flight.serviceDate,
+                                originTerminal: flight.latestTerminalDep || undefined,
+                                destTerminal: flight.latestTerminalArr || undefined,
+                                passengerName: flight.notes || undefined,
+                              }}
+                              onDelete={(flightId) => handleDeleteFlight(flightId, `${flight.carrierIata}${flight.flightNumber}`)}
+                              onRefresh={(flightId) => refreshOne.mutate(flightId)}
+                            />
                           ))}
                         </div>
                       </div>

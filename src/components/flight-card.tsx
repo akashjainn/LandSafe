@@ -35,9 +35,11 @@ interface Flight {
 interface FlightCardProps {
   flight: Flight;
   className?: string;
+  onDelete?: (flightId: string) => void;
+  onRefresh?: (flightId: string) => void;
 }
 
-export function FlightCard({ flight, className }: FlightCardProps) {
+export function FlightCard({ flight, className, onDelete, onRefresh }: FlightCardProps) {
   const formatTime = (date?: Date | string | null) => {
     if (!date) return "—";
     try {
@@ -146,6 +148,11 @@ export function FlightCard({ flight, className }: FlightCardProps) {
           <div className="flex items-center gap-1 shrink-0">
             <button
               type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onRefresh?.(flight.id);
+              }}
               className="p-2 rounded-lg hover:bg-muted text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label="Refresh"
             >
@@ -153,6 +160,13 @@ export function FlightCard({ flight, className }: FlightCardProps) {
             </button>
             <button
               type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (confirm(`Delete flight ${flight.airline}${flight.flightNumber}?`)) {
+                  onDelete?.(flight.id);
+                }
+              }}
               className="p-2 rounded-lg hover:bg-muted text-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500"
               aria-label="Delete"
             >

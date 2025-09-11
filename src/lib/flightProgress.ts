@@ -42,12 +42,14 @@ export function percentProgress(opts: {
   // Fallback: schedule window interpolation (pre-departure will yield 0 until start passes)
   const tSchedDep = norm(scheduledDeparture) ?? tActDep;
   const tEstArr = norm(estimatedArrival);
+  
   if (tSchedDep && tEstArr && tEstArr > tSchedDep) {
     if (now.getTime() <= tSchedDep) return 0;
     if (now.getTime() >= tEstArr) return 100;
     const p = ((now.getTime() - tSchedDep) / (tEstArr - tSchedDep)) * 100;
     return clamp(Math.round(p), 0, 100);
   }
+  
   return 0;
 }
 
