@@ -530,13 +530,11 @@ export default function BoardPage() {
   };
 
   const handleDeleteFlight = async (flightId: string, flightDetails: string) => {
-    if (confirm(`Delete flight ${flightDetails}?`)) {
-      try {
-        await deleteMutation.mutateAsync(flightId);
-      } catch (error) {
-        console.error('Failed to delete flight:', error);
-        alert('Failed to delete flight. Please try again.');
-      }
+    try {
+      await deleteMutation.mutateAsync(flightId);
+    } catch (error) {
+      console.error('Failed to delete flight:', error);
+      alert('Failed to delete flight. Please try again.');
     }
   };
 

@@ -85,6 +85,13 @@ export function FlightCard({ flight, className, onDelete, onRefresh }: FlightCar
         className
       )}
       aria-label={`Flight ${flight.flightNumber}`}
+      onClick={(e) => {
+        // Ignore clicks from dialog content
+        if ((e.target as HTMLElement).closest('[data-dialog]')) {
+          e.preventDefault();
+          return;
+        }
+      }}
     >
       <div className="grid grid-cols-12 gap-x-6 gap-y-3 p-4 sm:p-6">
         {/* Left: Flight / Origin */}
