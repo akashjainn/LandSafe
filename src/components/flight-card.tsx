@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { ProviderBadge } from "@/components/provider-badge";
 import Link from "next/link";
 import { formatAirportWithCity } from "@/lib/airports";
+import { FlightProgress } from "@/components/FlightProgress";
 
 // Optional real-time progress shape (mirrors realtime Flight.progress)
 interface OptionalProgress { percent?: number }
@@ -116,16 +117,13 @@ export function FlightCard({ flight, className }: FlightCardProps) {
             <div className="flex-1 h-0.5 bg-muted rounded" />
           </div>
           <div className="mt-2 w-full max-w-md min-w-0">
-            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-              <span>Progress</span>
-              <span>{percent}%</span>
-            </div>
-            <div className="h-1.5 bg-muted rounded overflow-hidden" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
-              <div 
-                className="h-full bg-primary transition-all duration-300 ease-out" 
-                style={{ width: `${Math.max(0, Math.min(100, percent))}%` }} 
-              />
-            </div>
+            <FlightProgress
+              schedDep={flight.latestSchedDep instanceof Date ? flight.latestSchedDep.toISOString() : (flight.latestSchedDep || undefined) as any}
+              estArr={flight.latestEstArr instanceof Date ? flight.latestEstArr.toISOString() : (flight.latestEstArr || flight.latestSchedArr || undefined) as any}
+              actDep={undefined /* placeholder: map to actual dep when available */}
+              actArr={undefined /* placeholder: map to actual arr when available */}
+              status={flight.latestStatus}
+            />
           </div>
         </div>
 
