@@ -6,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import ServiceWorker from "@/components/ServiceWorker";
 import GoogleAnalytics from "@/lib/ga";
 import Script from "next/script";
+import { Suspense } from "react";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -43,7 +44,9 @@ export default function RootLayout({
       <body
         className={`${inter.variable} font-sans antialiased`}
       >
-        <GoogleAnalytics />
+        <Suspense fallback={null}>
+          <GoogleAnalytics />
+        </Suspense>
         <Providers>
           <AppShell>
             {children}

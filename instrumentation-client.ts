@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 
-export function onRequestError() {}
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart
 
 export function register() {
   if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
