@@ -90,7 +90,14 @@ function toUTCDate(
   // Access via namespace to avoid type export issues
   // Access via namespace, typed safely without `any`
   const mod = tz as unknown as { zonedTimeToUtc?: (d: string | Date, tz: string) => Date };
-  return mod.zonedTimeToUtc ? mod.zonedTimeToUtc(str, ianaTz) : new Date(str + "Z");
+  const result = mod.zonedTimeToUtc ? mod.zonedTimeToUtc(str, ianaTz) : new Date(str + "Z");
+  
+  // Debug logging for Dec 30 DL flights
+  if (airportIata === 'DTW' && str.includes('2025-12-30')) {
+    console.log(`[DEBUG] UTC conversion: ${str} (${airportIata}/${ianaTz}) -> ${result.toISOString()}`);
+  }
+  
+  return result;
 }
 function depTime(f: BoardFlight): Date | undefined { return toUTCDate(f.latestEstDep || f.latestSchedDep, f.originIata); }
 function arrTime(f: BoardFlight): Date | undefined { return toUTCDate(f.latestEstArr || f.latestSchedArr, f.destIata); }
@@ -183,17 +190,47 @@ function buildItineraries(flights: BoardFlight[]): Itinerary[] {
     while (true) {
       const lastArr = arrTime(last);
       if (!lastArr || !last.destIata) break;
+      
+      // Debug logging for Dec 30 flights
+      const isDebugFlight = last.carrierIata === 'DL' && (last.flightNumber === '1240' || last.flightNumber === '275');
+      if (isDebugFlight) {
+        console.log(`[DEBUG] ${last.carrierIata}${last.flightNumber} arr at ${last.destIata}:`, lastArr.toISOString());
+      }
+      
       // candidates: remaining flights whose origin matches last dest and dep within window and after arrival
       const candidates: BoardFlight[] = [];
       remaining.forEach(id => {
         const cand = byId[id];
         if (!cand || cand.originIata !== last.destIata) return;
-        const d = depTime(cand); if (!d) return;
-        if (d.getTime() < lastArr.getTime()) return; // must depart after arrival
+        const d = depTime(cand); 
+        
+        // If no departure time, but airports match and it's the same service date, still consider it
+        if (!d) {
+          if (cand.serviceDate.toDateString() === last.serviceDate.toDateString()) {
+            if (isDebugFlight) console.log(`[DEBUG] No dep time for ${cand.carrierIata}${cand.flightNumber}, but same date - adding as candidate`);
+            candidates.push(cand);
+          }
+          return;
+        }
+        
+        if (isDebugFlight) {
+          console.log(`[DEBUG] Checking ${cand.carrierIata}${cand.flightNumber} dep from ${cand.originIata}:`, d.toISOString());
+        }
+        
+        if (d.getTime() < lastArr.getTime()) {
+          if (isDebugFlight) console.log(`[DEBUG] Rejected: departs before arrival`);
+          return; // must depart after arrival
+        }
         const hoursDiff = (d.getTime() - lastArr.getTime()) / 3600000;
+        if (isDebugFlight) {
+          console.log(`[DEBUG] Layover: ${hoursDiff.toFixed(2)} hours (max: ${MAX_CONNECTION_HOURS})`);
+        }
         if (hoursDiff <= MAX_CONNECTION_HOURS) candidates.push(cand);
       });
-      if (!candidates.length) break;
+      if (!candidates.length) {
+        if (isDebugFlight) console.log(`[DEBUG] No candidates found for connection`);
+        break;
+      }
       // pick earliest departure candidate
       candidates.sort((a,b)=>(depTime(a)?.getTime()||0) - (depTime(b)?.getTime()||0));
       const next = candidates[0];
@@ -963,6 +1000,19 @@ export default function BoardPage() {
                 <div className="p-6">
                   {(() => {
                     const dateFlights = flightsByDate[dateKey];
+                    
+                    // Debug log for Dec 30 flights
+                    if (dateKey === '2025-12-30') {
+                      console.log('[DEBUG] Dec 30 flights before grouping:', dateFlights.map(f => ({
+                        flight: `${f.carrierIata}${f.flightNumber}`,
+                        route: `${f.originIata}->${f.destIata}`,
+                        schedDep: f.latestSchedDep,
+                        schedArr: f.latestSchedArr,
+                        estDep: f.latestEstDep,
+                        estArr: f.latestEstArr
+                      })));
+                    }
+                    
                     const itineraries = buildItineraries(dateFlights);
                     const multiLegItineraries = itineraries.filter(it => it.legs.length > 1);
                     // Pair round trips among multi-leg itineraries
