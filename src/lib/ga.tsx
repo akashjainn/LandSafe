@@ -2,6 +2,12 @@
 import { useEffect } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void
+  }
+}
+
 const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
 
 export default function GoogleAnalytics() {
@@ -31,7 +37,6 @@ export default function GoogleAnalytics() {
   // send a page_view whenever route/search changes
   useEffect(() => {
     if (!GA_ID) return
-    // @ts-ignore
     window.gtag?.('event', 'page_view', { page_location: window.location.href })
   }, [pathname, searchParams])
 
