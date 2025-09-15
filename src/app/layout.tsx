@@ -40,6 +40,11 @@ export default function RootLayout({
             gtag('config', '${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? ""}', { anonymize_ip: true, send_page_view: false });
           `}
         </Script>
+        {/* iOS PWA polish */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="LandSafe" />
+        <link rel="apple-touch-icon" href="/icon-192x192.png" />
       </head>
       <body
         className={`${inter.variable} font-sans antialiased`}

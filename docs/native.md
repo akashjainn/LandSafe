@@ -39,3 +39,17 @@ This doc summarizes the native integration plan after enabling PWA.
 
 - Fastlane lanes for build, test, beta (TestFlight/IAS), prod release
 - Provisioning profiles managed by Fastlane match or Xcode automatic signing
+
+### GitHub Actions (macOS) example
+
+See `.github/workflows/ios-capacitor.yml` which:
+
+- Uses macos-14 runner
+- Builds Next.js with your env
+- Runs `npx cap sync` and ensures the iOS project exists
+- Archives with Xcode and exports an .ipa artifact
+
+Secrets to configure:
+
+- `DATABASE_URL` (if your Next build references Prisma)
+- For code signing to App Store Connect, integrate Fastlane or use Xcode automatic signing with a managed profile on the runner (or App Store Connect API key with `fastlane deliver`).

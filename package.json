@@ -10,12 +10,17 @@
     "db:seed": "npx tsx prisma/seed.ts",
     "postinstall": "prisma generate",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "cap:init": "cap init LandSafe com.landsafe.app --web-dir=out",
+    "cap:sync": "cap sync",
+    "cap:open:ios": "cap open ios",
+    "cap:add:ios": "cap add ios"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
+    "@capacitor/core": "^7.4.3",
     "@hookform/resolvers": "^5.2.1",
     "@prisma/client": "^6.15.0",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -49,6 +54,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^7.4.3",
+    "@capacitor/ios": "^7.4.3",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.6.3",
