@@ -46,3 +46,19 @@ When API_MARKET_KEY is set, calls go to:
 https://prod.api.market/api/v1/aedbx/aerodatabox
 
 With header: x-api-market-key: YOUR_KEY
+
+## Analytics & Error Monitoring
+
+GA4 and Sentry are integrated.
+
+1. Copy `env.example` to `.env.local` and fill values for:
+	- `NEXT_PUBLIC_GA_MEASUREMENT_ID`
+	- `NEXT_PUBLIC_SENTRY_DSN` (public DSN)
+	- `SENTRY_DSN` (server DSN)
+2. Page views are manually dispatched in `src/lib/ga.tsx` when route or search params change.
+3. Sentry config files: `sentry.client.config.ts`, `sentry.server.config.ts` plus `src/app/global-error.tsx` for React render errors.
+4. Add custom tags/context in `src/app/instrumentation.ts`.
+5. (CI) For source map upload set: `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`.
+
+Test Sentry (client): temporarily throw inside a client component.
+Test Sentry (API): throw inside an API route handler.

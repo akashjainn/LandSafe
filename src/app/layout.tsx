@@ -4,7 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { AppShell } from "@/components/app-shell";
 import ServiceWorker from "@/components/ServiceWorker";
-import GoogleAnalytics from "@/lib/ga";
+import GoogleAnalytics from "@/lib/ga"; // manual SPA page_view events
 import Script from "next/script";
 import { Suspense } from "react";
 
